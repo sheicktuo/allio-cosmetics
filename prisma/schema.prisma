@@ -1,13 +1,378 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Allio Cosmetics — Designer Perfume Reconditioning Platform
 
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────────────
+
+enum Role {
+  CUSTOMER
+  STAFF
+  ADMIN
+  SUPERADMIN
+}
+
+enum OrderStatus {
+  PENDING        // Payment pending
+  CONFIRMED      // Paid & confirmed, awaiting drop-off/collection
+  RECEIVED       // Bottle physically received by the team
+  ASSESSING      // Fragrance assessment in progress
+  RECONDITIONING // Active reconditioning work
+  QUALITY_CHECK  // Final QC before return
+  READY          // Ready for pickup / out for delivery
+  DELIVERED      // Returned to customer
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderType {
+  DROPOFF   // Customer drops bottle at a location
+  PICKUP    // We collect from customer's address
+  MAIL_IN   // Customer ships the bottle to us
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+// ─── Auth & Users ──────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  phone         String?
+  passwordHash  String?
+  role          Role      @default(CUSTOMER)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts             Account[]
+  sessions             Session[]
+  orders               ServiceOrder[]
+  addresses            Address[]
+  passwordResetTokens  PasswordResetToken[]
+  emailVerifyTokens    EmailVerificationToken[]
+  pushSubscriptions    PushSubscription[]
+  auditLogs            AuditLog[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expires   DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Business Config ───────────────────────────────────────────────────────
+
+model BusinessSettings {
+  id               String  @id @default(cuid())
+  businessName     String  @default("Allio Cosmetics")
+  logoUrl          String?
+  tagline          String?
+  email            String?
+  phone            String?
+  address          String?
+  city             String?
+  country          String?
+  currency         String  @default("GBP")
+  stripePublishKey String?
+  stripeSecretKey  String?
+  stripeWebhookKey String?
+  resendApiKey     String?
+  pusherAppId      String?
+  pusherKey        String?
+  pusherSecret     String?
+  pusherCluster    String?
+  vapidPublicKey   String?
+  vapidPrivateKey  String?
+  turnaroundDays   Int     @default(5)
+  mailInEnabled    Boolean @default(true)
+  pickupEnabled    Boolean @default(true)
+  dropoffEnabled   Boolean @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+// ─── Service Catalog ───────────────────────────────────────────────────────
+
+model ServiceCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  services Service[]
+}
+
+model Service {
+  id              String   @id @default(cuid())
+  categoryId      String
+  name            String
+  slug            String   @unique
+  description     String?
+  longDescription String?
+  imageUrl        String?
+  price           Float    // base price in pence/cents
+  turnaroundDays  Int      @default(5)
+  isActive        Boolean  @default(true)
+  isFeatured      Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  category   ServiceCategory @relation(fields: [categoryId], references: [id])
+  addons     ServiceAddon[]
+  orderItems ServiceOrderItem[]
+}
+
+model ServiceAddon {
+  id          String   @id @default(cuid())
+  serviceId   String
+  name        String
+  description String?
+  price       Float    // additional price
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  service           Service            @relation(fields: [serviceId], references: [id])
+  orderItemAddons   OrderItemAddon[]
+}
+
+// ─── Orders ────────────────────────────────────────────────────────────────
+
+model ServiceOrder {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique @default(cuid())
+  userId          String?
+  guestEmail      String?
+  guestName       String?
+  guestPhone      String?
+  status          OrderStatus   @default(PENDING)
+  orderType       OrderType
+  paymentStatus   PaymentStatus @default(UNPAID)
+  paymentIntentId String?
+  subtotal        Float
+  discount        Float         @default(0)
+  total           Float
+  promoCode       String?
+  notes           String?       // customer notes
+  staffNotes      String?       // internal notes
+  assessmentNotes String?       // fragrance assessor notes
+  collectionAddress String?     // for PICKUP type
+  returnAddressId String?
+  stripeReceiptUrl String?
+  estimatedReady  DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user           User?                @relation(fields: [userId], references: [id])
+  returnAddress  Address?             @relation(fields: [returnAddressId], references: [id])
+  items          ServiceOrderItem[]
+  statusHistory  OrderStatusHistory[]
+  bottles        PerfumeBottle[]
+}
+
+model ServiceOrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  serviceId String
+  quantity  Int      @default(1)
+  unitPrice Float
+  total     Float
+  notes     String?
+  createdAt DateTime @default(now())
+
+  order   ServiceOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  service Service        @relation(fields: [serviceId], references: [id])
+  addons  OrderItemAddon[]
+}
+
+model OrderItemAddon {
+  id          String   @id @default(cuid())
+  orderItemId String
+  addonId     String
+  price       Float
+  createdAt   DateTime @default(now())
+
+  orderItem ServiceOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  addon     ServiceAddon     @relation(fields: [addonId], references: [id])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  changedBy String?     // user id or "system"
+  createdAt DateTime    @default(now())
+
+  order ServiceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ─── Perfume Bottles ───────────────────────────────────────────────────────
+
+model PerfumeBottle {
+  id          String   @id @default(cuid())
+  orderId     String
+  brand       String
+  fragrance   String
+  bottleSize  String?  // e.g. "50ml", "100ml"
+  condition   String?  // customer-described condition
+  photoUrl    String?  // uploaded photo of the bottle
+  createdAt   DateTime @default(now())
+
+  order ServiceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ─── Addresses ─────────────────────────────────────────────────────────────
+
+model Address {
+  id         String   @id @default(cuid())
+  userId     String
+  label      String?  // e.g. "Home", "Work"
+  line1      String
+  line2      String?
+  city       String
+  postcode   String
+  country    String   @default("GB")
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders ServiceOrder[]
+}
+
+// ─── Promotions ────────────────────────────────────────────────────────────
+
+model PromoCode {
+  id            String       @id @default(cuid())
+  code          String       @unique
+  description   String?
+  discountType  DiscountType
+  discountValue Float
+  minOrderValue Float?
+  maxUses       Int?
+  usesCount     Int          @default(0)
+  isActive      Boolean      @default(true)
+  startsAt      DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+// ─── Notifications ─────────────────────────────────────────────────────────
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Analytics ─────────────────────────────────────────────────────────────
+
+model DailySalesSnapshot {
+  id              String   @id @default(cuid())
+  date            DateTime @unique
+  totalOrders     Int      @default(0)
+  totalRevenue    Float    @default(0)
+  avgOrderValue   Float    @default(0)
+  newCustomers    Int      @default(0)
+  cancelledOrders Int      @default(0)
+  completedOrders Int      @default(0)
+  createdAt       DateTime @default(now())
+}
+
+// ─── Audit ─────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 }
