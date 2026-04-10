@@ -1,4 +1,5 @@
 import Link from "next/link"
+import PasswordInput from "@/components/ui/password-input"
 
 export const metadata = { title: "Create Account — Allio Cosmetics" }
 
@@ -121,15 +122,13 @@ export default function RegisterPage({
 
             <div className="space-y-1.5">
               <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
-              <input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 required
                 minLength={8}
                 autoComplete="new-password"
                 placeholder="Min. 8 characters"
-                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
               />
             </div>
 
