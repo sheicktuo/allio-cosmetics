@@ -1,33 +1,55 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 
+const ROLE_HOME: Record<string, string> = {
+  SUPERADMIN: "/admin/dashboard",
+  ADMIN:      "/admin/dashboard",
+  STAFF:      "/staff",
+  CUSTOMER:   "/profile/orders",
+}
+
 export default auth((req) => {
   const { pathname } = req.nextUrl
   const session = req.auth
+  const role = session?.user?.role ?? ""
 
-  // Admin routes — require ADMIN or SUPERADMIN
+  // ── Already logged in — block access to auth pages ────────────────────
+  if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
+    if (session) {
+      const dest = ROLE_HOME[role] ?? "/profile/orders"
+      return NextResponse.redirect(new URL(dest, req.url))
+    }
+    return NextResponse.next()
+  }
+
+  // ── Admin routes — ADMIN or SUPERADMIN only ───────────────────────────
   if (pathname.startsWith("/admin")) {
     if (!session) {
-      return NextResponse.redirect(new URL("/login?from=/admin", req.url))
+      return NextResponse.redirect(new URL(`/login?from=${pathname}`, req.url))
     }
-    const role = session.user?.role
     if (role !== "ADMIN" && role !== "SUPERADMIN") {
-      return NextResponse.redirect(new URL("/", req.url))
+      return NextResponse.redirect(new URL(ROLE_HOME[role] ?? "/", req.url))
     }
   }
 
-  // Staff routes — require STAFF, ADMIN, or SUPERADMIN
+  // ── Staff routes — STAFF, ADMIN, or SUPERADMIN ────────────────────────
   if (pathname.startsWith("/staff")) {
     if (!session) {
-      return NextResponse.redirect(new URL("/login?from=/staff", req.url))
+      return NextResponse.redirect(new URL(`/login?from=${pathname}`, req.url))
     }
-    const role = session.user?.role
-    if (!["STAFF", "ADMIN", "SUPERADMIN"].includes(role ?? "")) {
-      return NextResponse.redirect(new URL("/", req.url))
+    if (!["STAFF", "ADMIN", "SUPERADMIN"].includes(role)) {
+      return NextResponse.redirect(new URL(ROLE_HOME[role] ?? "/", req.url))
     }
   }
 
-  // Profile/account routes — require any authenticated user
+  // ── Checkout — any authenticated user ────────────────────────────────
+  if (pathname.startsWith("/checkout")) {
+    if (!session) {
+      return NextResponse.redirect(new URL(`/login?from=${pathname}`, req.url))
+    }
+  }
+
+  // ── Profile / account — any authenticated user ───────────────────────
   if (pathname.startsWith("/profile") || pathname.startsWith("/account")) {
     if (!session) {
       return NextResponse.redirect(new URL(`/login?from=${pathname}`, req.url))
@@ -38,5 +60,13 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ["/admin/:path*", "/staff/:path*", "/profile/:path*", "/account/:path*"],
+  matcher: [
+    "/login",
+    "/register",
+    "/admin/:path*",
+    "/staff/:path*",
+    "/checkout/:path*",
+    "/profile/:path*",
+    "/account/:path*",
+  ],
 }

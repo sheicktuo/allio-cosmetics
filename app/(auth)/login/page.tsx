@@ -7,7 +7,7 @@ export const metadata = { title: "Sign In — Allio Cosmetics" }
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string }
+  searchParams: { error?: string; from?: string }
 }) {
   const errorMap: Record<string, string> = {
     CredentialsSignin: "Invalid email or password.",
@@ -87,6 +87,9 @@ export default function LoginPage({
           )}
 
           <form action={loginAction} className="space-y-5">
+            {searchParams.from && (
+              <input type="hidden" name="from" value={searchParams.from} />
+            )}
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
