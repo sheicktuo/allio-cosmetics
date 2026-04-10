@@ -7,7 +7,7 @@ export const metadata = { title: "Sign In — Allio Cosmetics" }
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string; from?: string }
+  searchParams: { error?: string; from?: string; registered?: string }
 }) {
   const errorMap: Record<string, string> = {
     CredentialsSignin: "Invalid email or password.",
@@ -78,6 +78,13 @@ export default function LoginPage({
             <h1 className="text-3xl font-heading font-bold text-foreground">Welcome back</h1>
             <p className="text-muted-foreground mt-1.5">Sign in to your account to continue</p>
           </div>
+
+          {/* Success */}
+          {searchParams.registered && (
+            <div className="mb-5 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm">
+              Account created — sign in to continue.
+            </div>
+          )}
 
           {/* Error */}
           {error && (

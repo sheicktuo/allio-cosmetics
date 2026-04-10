@@ -4,33 +4,42 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 
 const schema = z.object({
-  name: z.string().min(1).max(100),
-  email: z.string().email(),
-  phone: z.string().optional(),
-  password: z.string().min(8),
+  name:     z.string().min(1, "Name is required"),
+  email:    z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  phone:    z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const parsed = schema.safeParse(body)
+  const formData = await req.formData()
+
+  const parsed = schema.safeParse({
+    name:     formData.get("name"),
+    email:    formData.get("email"),
+    password: formData.get("password"),
+    phone:    formData.get("phone") || undefined,
+  })
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 })
+    const message = parsed.error.errors[0]?.message ?? "Invalid input"
+    return NextResponse.redirect(
+      new URL(`/register?error=${encodeURIComponent(message)}`, req.url),
+      303
+    )
   }
 
-  const { name, email, phone, password } = parsed.data
+  const { name, email, password, phone } = parsed.data
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
-    return NextResponse.json({ error: "Email already registered" }, { status: 409 })
+    return NextResponse.redirect(new URL("/register?error=EmailTaken", req.url), 303)
   }
 
   const passwordHash = await bcrypt.hash(password, 12)
 
-  const user = await prisma.user.create({
-    data: { name, email, phone, passwordHash, role: "CUSTOMER" },
-    select: { id: true, email: true, name: true },
+  await prisma.user.create({
+    data: { name, email, passwordHash, phone: phone ?? null, role: "CUSTOMER" },
   })
 
-  return NextResponse.json({ user }, { status: 201 })
+  return NextResponse.redirect(new URL("/login?registered=1", req.url), 303)
 }
