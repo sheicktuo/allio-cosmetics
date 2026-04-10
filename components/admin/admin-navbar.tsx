@@ -1,8 +1,8 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { signOut } from "next-auth/react"
 import DarkModeToggle from "@/components/layout/dark-mode-toggle"
+import SignOutModal from "@/components/admin/sign-out-modal"
 
 const pageTitles: Record<string, string> = {
   "/admin/dashboard":   "Dashboard",
@@ -48,16 +48,7 @@ export default function AdminNavbar({ userName, userRole }: Props) {
             <p className="text-xs font-semibold text-foreground leading-none">{userName ?? "Admin"}</p>
             <p className="text-xs text-muted-foreground leading-none mt-0.5">{userRole ?? "ADMIN"}</p>
           </div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="ml-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
-            title="Sign out"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
+          <SignOutModal />
         </div>
       </div>
     </header>
