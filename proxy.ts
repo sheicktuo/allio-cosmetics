@@ -42,13 +42,6 @@ export default auth((req) => {
     }
   }
 
-  // ── Checkout — any authenticated user ────────────────────────────────
-  if (pathname.startsWith("/checkout")) {
-    if (!session) {
-      return NextResponse.redirect(new URL(`/login?from=${pathname}`, req.url))
-    }
-  }
-
   // ── Profile / account — any authenticated user ───────────────────────
   if (pathname.startsWith("/profile") || pathname.startsWith("/account")) {
     if (!session) {
@@ -65,7 +58,6 @@ export const config = {
     "/register",
     "/admin/:path*",
     "/staff/:path*",
-    "/checkout/:path*",
     "/profile/:path*",
     "/account/:path*",
   ],
