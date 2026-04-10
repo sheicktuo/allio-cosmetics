@@ -4,117 +4,176 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── Allio brand tokens ────────────────────────────────────────────────── */
+/* Gold palette derived from the logo */
+/* --gold-*  : warm antique gold  (#C9A84C family)                          */
+/* Light theme : warm ivory background, dark charcoal text, gold accents    */
+/* Dark theme  : near-black background (like the logo), gold + cream text   */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
+
+  /* Brand gold scale */
+  --color-gold-50:  #fdf8ec;
+  --color-gold-100: #f9edcb;
+  --color-gold-200: #f2d98d;
+  --color-gold-300: #e8c05a;
+  --color-gold-400: #d4a832;
+  --color-gold-500: #c9a84c;   /* logo gold */
+  --color-gold-600: #b8920d;
+  --color-gold-700: #9a7a0a;
+  --color-gold-800: #7c6208;
+  --color-gold-900: #5e4a06;
+
+  --font-sans:    var(--font-sans);
+  --font-heading: var(--font-heading);
+  --font-mono:    var(--font-mono);
+
+  --color-sidebar-ring:                var(--sidebar-ring);
+  --color-sidebar-border:              var(--sidebar-border);
+  --color-sidebar-accent-foreground:   var(--sidebar-accent-foreground);
+  --color-sidebar-accent:              var(--sidebar-accent);
+  --color-sidebar-primary-foreground:  var(--sidebar-primary-foreground);
+  --color-sidebar-primary:             var(--sidebar-primary);
+  --color-sidebar-foreground:          var(--sidebar-foreground);
+  --color-sidebar:                     var(--sidebar);
+  --color-chart-5:          var(--chart-5);
+  --color-chart-4:          var(--chart-4);
+  --color-chart-3:          var(--chart-3);
+  --color-chart-2:          var(--chart-2);
+  --color-chart-1:          var(--chart-1);
+  --color-ring:             var(--ring);
+  --color-input:            var(--input);
+  --color-border:           var(--border);
+  --color-destructive:      var(--destructive);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-accent:               var(--accent);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-muted:                var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --color-secondary:            var(--secondary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-primary:              var(--primary);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-popover:              var(--popover);
+  --color-card-foreground:      var(--card-foreground);
+  --color-card:                 var(--card);
+  --radius-sm:  calc(var(--radius) * 0.6);
+  --radius-md:  calc(var(--radius) * 0.8);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ── Light theme : ivory + gold ────────────────────────────────────────── */
 :root {
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Background: warm ivory */
+  --background:    oklch(0.98 0.012 85);
+  --foreground:    oklch(0.13 0.018 60);   /* very dark warm brown-black */
+
+  /* Cards & popovers: slightly warm white */
+  --card:                oklch(1 0.005 85);
+  --card-foreground:     oklch(0.13 0.018 60);
+  --popover:             oklch(1 0.005 85);
+  --popover-foreground:  oklch(0.13 0.018 60);
+
+  /* Primary: logo gold */
+  --primary:             oklch(0.72 0.13 75);   /* #C9A84C */
+  --primary-foreground:  oklch(0.10 0.01 60);   /* near-black text on gold */
+
+  /* Secondary: soft warm beige */
+  --secondary:             oklch(0.94 0.02 80);
+  --secondary-foreground:  oklch(0.20 0.02 60);
+
+  /* Muted */
+  --muted:             oklch(0.94 0.015 80);
+  --muted-foreground:  oklch(0.52 0.03 70);
+
+  /* Accent: pale gold tint */
+  --accent:             oklch(0.94 0.03 80);
+  --accent-foreground:  oklch(0.20 0.02 60);
+
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+
+  /* Borders: warm light gold */
+  --border: oklch(0.88 0.03 80);
+  --input:  oklch(0.88 0.03 80);
+  --ring:   oklch(0.72 0.13 75);   /* gold focus ring */
+
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+
+  /* Charts */
+  --chart-1: oklch(0.72 0.13 75);
+  --chart-2: oklch(0.60 0.10 75);
+  --chart-3: oklch(0.50 0.08 75);
+  --chart-4: oklch(0.40 0.06 75);
+  --chart-5: oklch(0.30 0.04 75);
+
+  /* Sidebar */
+  --sidebar:                    oklch(0.96 0.015 82);
+  --sidebar-foreground:         oklch(0.13 0.018 60);
+  --sidebar-primary:            oklch(0.72 0.13 75);
+  --sidebar-primary-foreground: oklch(0.10 0.01 60);
+  --sidebar-accent:             oklch(0.91 0.03 80);
+  --sidebar-accent-foreground:  oklch(0.20 0.02 60);
+  --sidebar-border:             oklch(0.88 0.03 80);
+  --sidebar-ring:               oklch(0.72 0.13 75);
 }
 
+/* ── Dark theme : near-black + gold (matches the logo exactly) ─────────── */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Background: near-black with the faintest warm tint (logo bg) */
+  --background:    oklch(0.09 0.008 60);
+  --foreground:    oklch(0.93 0.015 85);   /* warm cream */
+
+  /* Cards: slightly lighter than bg */
+  --card:                oklch(0.13 0.010 60);
+  --card-foreground:     oklch(0.93 0.015 85);
+  --popover:             oklch(0.13 0.010 60);
+  --popover-foreground:  oklch(0.93 0.015 85);
+
+  /* Primary: slightly brighter gold for dark bg contrast */
+  --primary:             oklch(0.78 0.14 76);
+  --primary-foreground:  oklch(0.09 0.008 60);   /* near-black on gold */
+
+  /* Secondary */
+  --secondary:             oklch(0.20 0.015 60);
+  --secondary-foreground:  oklch(0.88 0.015 82);
+
+  /* Muted */
+  --muted:             oklch(0.18 0.012 60);
+  --muted-foreground:  oklch(0.62 0.04 75);
+
+  /* Accent: dark gold tint */
+  --accent:             oklch(0.20 0.015 65);
+  --accent-foreground:  oklch(0.88 0.015 82);
+
   --destructive: oklch(0.704 0.191 22.216);
+
+  /* Borders: subtle warm gold outline */
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --input:  oklch(1 0 0 / 12%);
+  --ring:   oklch(0.78 0.14 76);
+
+  /* Charts */
+  --chart-1: oklch(0.78 0.14 76);
+  --chart-2: oklch(0.65 0.11 75);
+  --chart-3: oklch(0.52 0.09 75);
+  --chart-4: oklch(0.42 0.07 75);
+  --chart-5: oklch(0.32 0.05 75);
+
+  /* Sidebar */
+  --sidebar:                    oklch(0.12 0.010 60);
+  --sidebar-foreground:         oklch(0.93 0.015 85);
+  --sidebar-primary:            oklch(0.78 0.14 76);
+  --sidebar-primary-foreground: oklch(0.09 0.008 60);
+  --sidebar-accent:             oklch(0.18 0.012 60);
+  --sidebar-accent-foreground:  oklch(0.88 0.015 82);
+  --sidebar-border:             oklch(1 0 0 / 10%);
+  --sidebar-ring:               oklch(0.78 0.14 76);
 }
 
 @layer base {
@@ -126,5 +185,8 @@
   }
   html {
     @apply font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading), serif;
   }
 }

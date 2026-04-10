@@ -1,231 +1,315 @@
 import Link from "next/link"
 import Header from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
-const services = [
+// ─── Mock data (replace with DB queries once products are seeded) ──────────
+
+const featuredProducts = [
   {
-    name: "Full Reconditioning",
-    icon: "✨",
-    description: "Complete restoration — fragrance refresh, bottle cleaning, and presentation polish.",
-    price: "From £49",
-    color: "from-rose-50 to-pink-50",
+    id: "1",
+    name: "Full Reconditioning Kit",
+    brand: "Allio",
+    price: 4900,
+    originalPrice: 6500,
+    badge: "Best Seller",
+    badgeColor: "bg-primary text-primary-foreground",
+    emoji: "✨",
+    bg: "from-gold-50 to-gold-100 dark:from-gold-900/20 dark:to-gold-800/20",
+  },
+  {
+    id: "2",
+    name: "Scent Refresh Set",
+    brand: "Allio",
+    price: 2900,
+    originalPrice: null,
+    badge: "New",
+    badgeColor: "bg-secondary text-secondary-foreground",
+    emoji: "🌸",
+    bg: "from-gold-100 to-gold-50 dark:from-gold-900/15 dark:to-gold-800/15",
+  },
+  {
+    id: "3",
+    name: "Bottle Restoration Pack",
+    brand: "Allio",
+    price: 1900,
+    originalPrice: null,
+    badge: null,
+    badgeColor: "",
+    emoji: "💎",
+    bg: "from-muted to-accent dark:from-card dark:to-muted",
+  },
+  {
+    id: "4",
+    name: "Bespoke Blending Experience",
+    brand: "Allio",
+    price: 7900,
+    originalPrice: null,
+    badge: "Limited",
+    badgeColor: "bg-primary/80 text-primary-foreground",
+    emoji: "🧪",
+    bg: "from-muted to-accent dark:from-card dark:to-muted",
+  },
+]
+
+const collections = [
+  {
+    name: "Reconditioning",
+    description: "Restore your bottle to its original glory",
+    emoji: "✨",
+    href: "/shop/reconditioning",
+    bg: "bg-primary",
+    textColor: "text-primary-foreground",
+    size: "col-span-2 row-span-2",
   },
   {
     name: "Scent Refresh",
-    icon: "🌸",
-    description: "Top up your fragrance concentration to its original intensity.",
-    price: "From £29",
-    color: "from-purple-50 to-violet-50",
+    description: "Top up faded fragrances",
+    emoji: "🌸",
+    href: "/shop/scent-refresh",
+    bg: "bg-secondary dark:bg-card",
+    textColor: "text-secondary-foreground",
+    size: "col-span-1 row-span-1",
   },
   {
-    name: "Bottle Restoration",
-    icon: "💎",
-    description: "Deep clean, descale, and restore the bottle to showroom condition.",
-    price: "From £19",
-    color: "from-amber-50 to-yellow-50",
+    name: "Bottle Care",
+    description: "Clean & restore the exterior",
+    emoji: "💎",
+    href: "/shop/bottle-care",
+    bg: "bg-muted dark:bg-card",
+    textColor: "text-foreground",
+    size: "col-span-1 row-span-1",
   },
   {
-    name: "Custom Blending",
-    icon: "🧪",
-    description: "Work with our perfumers to create a bespoke fragrance blend for your bottle.",
-    price: "From £79",
-    color: "from-emerald-50 to-teal-50",
+    name: "Bespoke",
+    description: "Custom fragrance blending",
+    emoji: "🧪",
+    href: "/shop/bespoke",
+    bg: "bg-primary/80",
+    textColor: "text-primary-foreground",
+    size: "col-span-2 row-span-1",
   },
 ]
 
-const steps = [
-  { step: "01", title: "Book Online", description: "Choose your service and submit your order in minutes." },
-  { step: "02", title: "Send Your Bottle", description: "Drop off, mail in, or request a collection at your door." },
-  { step: "03", title: "Expert Reconditioning", description: "Our specialists assess and restore your fragrance." },
-  { step: "04", title: "Returned to You", description: "Your bottle is returned looking and smelling brand new." },
-]
+function formatPrice(pence: number) {
+  return `£${(pence / 100).toFixed(0)}`
+}
 
-const brands = ["Chanel", "Dior", "YSL", "Gucci", "Tom Ford", "Hermès", "Lancôme", "Versace"]
+// ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       <Header />
 
-      {/* Hero */}
-      <section className="relative bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 py-24 overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-rose-200 rounded-full opacity-20 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-200 rounded-full opacity-20 blur-3xl" />
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section className="relative bg-linear-to-br from-background via-muted to-accent overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-primary rounded-full opacity-10 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-primary rounded-full opacity-10 blur-3xl" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <span className="inline-block bg-rose-100 text-rose-700 px-4 py-2 rounded-full text-sm font-semibold">
-                Expert Perfume Reconditioning
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Text */}
+            <div className="space-y-7">
+              <span className="inline-block bg-primary/15 text-primary px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide border border-primary/20">
+                New Collection — Spring 2026
               </span>
-              <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white leading-tight">
-                Give Your Fragrance
-                <span className="text-rose-600"> New Life</span>
+              <h1 className="text-5xl md:text-6xl font-heading font-bold text-foreground leading-[1.1]">
+                Restore the<br />
+                <span className="text-primary">Scent You Love</span>
               </h1>
-              <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-                Specialist reconditioning for designer perfume bottles. We restore, refresh, and revive your most loved fragrances — so they last a lifetime.
+              <p className="text-lg text-muted-foreground leading-relaxed max-w-md">
+                Shop our premium reconditioning products and services. Bring your designer fragrances back to life — effortlessly.
               </p>
-              <div className="flex flex-wrap gap-4">
-                <Button asChild size="lg" className="bg-rose-600 hover:bg-rose-700 text-white">
-                  <Link href="/services">Explore Services</Link>
+              <div className="flex flex-wrap gap-3">
+                <Button asChild size="lg" className="bg-primary hover:opacity-90 text-primary-foreground shadow-lg shadow-primary/20">
+                  <Link href="/shop">Shop Now</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link href="/book">Book Now</Link>
+                  <Link href="/shop/collections">View Collections</Link>
                 </Button>
               </div>
-              <div className="flex items-center gap-10 pt-2">
+              <div className="flex items-center gap-10 pt-1">
                 <div>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">500+</div>
-                  <div className="text-sm text-gray-500">Bottles Restored</div>
+                  <p className="text-2xl font-bold font-heading text-foreground">500+</p>
+                  <p className="text-sm text-muted-foreground">Bottles Restored</p>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">4.9★</div>
-                  <div className="text-sm text-gray-500">Customer Rating</div>
+                  <p className="text-2xl font-bold font-heading text-foreground">4.9★</p>
+                  <p className="text-sm text-muted-foreground">Rating</p>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">5-day</div>
-                  <div className="text-sm text-gray-500">Turnaround</div>
+                  <p className="text-2xl font-bold font-heading text-foreground">Free</p>
+                  <p className="text-sm text-muted-foreground">Returns over £75</p>
                 </div>
               </div>
             </div>
-            <div className="relative hidden md:block">
-              <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-10 text-center">
-                <div className="text-8xl mb-4">🌹</div>
-                <p className="text-gray-500 text-sm font-medium uppercase tracking-wide">Featured Service</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">Full Reconditioning</p>
-                <p className="text-rose-600 font-semibold mt-1">From £49</p>
+
+            {/* Product preview */}
+            <div className="relative hidden md:flex gap-4 justify-center">
+              <div className="bg-card border border-border rounded-3xl shadow-2xl p-8 w-56 text-center">
+                <div className="w-full aspect-square bg-linear-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mb-4">
+                  <span className="text-6xl">🌹</span>
+                </div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Best Seller</p>
+                <p className="font-bold font-heading text-foreground mt-0.5">Full Reconditioning</p>
+                <p className="text-primary font-semibold mt-1">£49</p>
+                <button className="w-full mt-3 bg-foreground text-background text-sm font-semibold py-2 rounded-xl hover:opacity-80 transition-opacity">
+                  Add to Cart
+                </button>
+              </div>
+              <div className="bg-card border border-border rounded-3xl shadow-xl p-8 w-48 text-center self-end mb-8">
+                <div className="w-full aspect-square bg-linear-to-br from-primary/15 to-primary/5 rounded-2xl flex items-center justify-center mb-4">
+                  <span className="text-5xl">🌸</span>
+                </div>
+                <p className="font-bold font-heading text-foreground text-sm">Scent Refresh</p>
+                <p className="text-primary font-semibold mt-1 text-sm">£29</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Trusted brands */}
-      <section className="py-10 bg-gray-50 dark:bg-gray-900 border-y border-gray-100 dark:border-gray-800">
+      {/* ── Featured Products ────────────────────────────────────────────── */}
+      <section className="py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500 mb-6 uppercase tracking-wide font-medium">
-            We work with bottles from all major houses
-          </p>
-          <div className="flex flex-wrap justify-center gap-6">
-            {brands.map((brand) => (
-              <span key={brand} className="text-gray-400 dark:text-gray-500 font-semibold text-lg">
-                {brand}
-              </span>
-            ))}
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-3xl font-heading font-bold text-foreground">Featured Products</h2>
+              <p className="text-muted-foreground mt-1">Our most-loved reconditioning packages</p>
+            </div>
+            <Link href="/shop" className="text-sm font-medium text-primary hover:underline hidden sm:block">
+              View all →
+            </Link>
           </div>
-        </div>
-      </section>
 
-      {/* Services */}
-      <section className="py-24 bg-white dark:bg-gray-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Our Services</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Professional reconditioning packages tailored to your bottle&apos;s needs.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {services.map((service) => (
-              <Link key={service.name} href="/services" className="group">
-                <div className={`bg-gradient-to-br ${service.color} dark:from-gray-800 dark:to-gray-800 rounded-2xl p-8 hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1 h-full`}>
-                  <div className="text-5xl mb-4">{service.icon}</div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{service.name}</h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 leading-relaxed">{service.description}</p>
-                  <span className="text-rose-600 font-semibold text-sm">{service.price}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredProducts.map((product) => (
+              <div
+                key={product.id}
+                className="group border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow bg-card"
+              >
+                {/* Image area */}
+                <div className={`relative bg-linear-to-br ${product.bg} aspect-square flex items-center justify-center`}>
+                  <span className="text-7xl group-hover:scale-110 transition-transform duration-300">
+                    {product.emoji}
+                  </span>
+                  {product.badge && (
+                    <Badge className={`absolute top-3 left-3 ${product.badgeColor} border-0`}>
+                      {product.badge}
+                    </Badge>
+                  )}
                 </div>
-              </Link>
+
+                {/* Info */}
+                <div className="p-5">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">{product.brand}</p>
+                  <h3 className="font-semibold font-heading text-foreground mb-3 leading-snug">{product.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold text-foreground">{formatPrice(product.price)}</span>
+                    {product.originalPrice && (
+                      <span className="text-sm text-muted-foreground line-through">{formatPrice(product.originalPrice)}</span>
+                    )}
+                  </div>
+                  <button className="w-full mt-4 bg-primary text-primary-foreground text-sm font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity">
+                    Add to Cart
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
-          <div className="text-center mt-10">
-            <Button asChild variant="outline" size="lg">
-              <Link href="/services">View All Services</Link>
+
+          <div className="text-center mt-8 sm:hidden">
+            <Button asChild variant="outline">
+              <Link href="/shop">View All Products</Link>
             </Button>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-24 bg-gray-50 dark:bg-gray-900">
+      {/* ── Collection View ──────────────────────────────────────────────── */}
+      <section className="py-20 bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">How It Works</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">Four simple steps to a restored fragrance.</p>
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-3xl font-heading font-bold text-foreground">Shop by Collection</h2>
+              <p className="text-muted-foreground mt-1">Find exactly what your fragrance needs</p>
+            </div>
+            <Link href="/shop/collections" className="text-sm font-medium text-primary hover:underline hidden sm:block">
+              All collections →
+            </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {steps.map((s, i) => (
-              <div key={s.step} className="relative text-center">
-                {i < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-8 left-[calc(50%+2rem)] w-[calc(100%-4rem)] h-0.5 bg-rose-100 dark:bg-gray-700" />
-                )}
-                <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-600 text-white text-xl font-bold mb-4">
-                  {s.step}
+
+          {/* Bento grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 auto-rows-[180px]">
+            {collections.map((col) => (
+              <Link
+                key={col.name}
+                href={col.href}
+                className={`${col.size} ${col.bg} rounded-2xl p-6 flex flex-col justify-end group overflow-hidden relative hover:opacity-95 transition-opacity border border-border`}
+              >
+                <div className={`absolute top-5 right-5 text-4xl opacity-25 group-hover:opacity-45 transition-opacity`}>
+                  {col.emoji}
                 </div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">{s.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{s.description}</p>
-              </div>
+                <div>
+                  <p className={`text-xs font-medium uppercase tracking-wider opacity-70 mb-1 ${col.textColor}`}>{col.description}</p>
+                  <h3 className={`text-xl font-bold font-heading ${col.textColor}`}>{col.name}</h3>
+                </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-24 bg-gradient-to-r from-rose-600 to-pink-600">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold text-white mb-4">Ready to restore your favourite scent?</h2>
-          <p className="text-white/90 text-lg mb-8">Book online in minutes. 5-day turnaround. Free returns on orders over £75.</p>
-          <Button asChild size="lg" className="bg-white text-rose-600 hover:bg-gray-100">
-            <Link href="/book">Book a Service</Link>
-          </Button>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-950 text-white py-14">
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      <footer className="bg-foreground text-background py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-10 mb-10">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 bg-rose-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">A</span>
+                <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold font-heading">A</span>
                 </div>
-                <span className="text-xl font-bold">Allio Cosmetics</span>
+                <span className="text-xl font-bold font-heading">Allio <span className="text-primary">Cosmetics</span></span>
               </div>
-              <p className="text-gray-400 text-sm leading-relaxed">Specialist designer perfume reconditioning. Restore what you love.</p>
+              <p className="opacity-60 text-sm leading-relaxed">
+                Specialist designer perfume reconditioning. Restore what you love.
+              </p>
             </div>
             <div>
-              <h3 className="font-bold mb-4 text-sm uppercase tracking-wide">Services</h3>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="/services" className="hover:text-white transition-colors">All Services</Link></li>
-                <li><Link href="/services/reconditioning" className="hover:text-white transition-colors">Full Reconditioning</Link></li>
-                <li><Link href="/services/scent-refresh" className="hover:text-white transition-colors">Scent Refresh</Link></li>
-                <li><Link href="/services/bottle-restoration" className="hover:text-white transition-colors">Bottle Restoration</Link></li>
+              <h3 className="font-bold mb-4 text-sm uppercase tracking-wide font-heading text-primary">Shop</h3>
+              <ul className="space-y-2 opacity-60 text-sm">
+                <li><Link href="/shop" className="hover:opacity-100 transition-opacity">All Products</Link></li>
+                <li><Link href="/shop/reconditioning" className="hover:opacity-100 transition-opacity">Reconditioning</Link></li>
+                <li><Link href="/shop/scent-refresh" className="hover:opacity-100 transition-opacity">Scent Refresh</Link></li>
+                <li><Link href="/shop/bespoke" className="hover:opacity-100 transition-opacity">Bespoke</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-bold mb-4 text-sm uppercase tracking-wide">Company</h3>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
-                <li><Link href="/track" className="hover:text-white transition-colors">Track Order</Link></li>
-                <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
-                <li><Link href="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
+              <h3 className="font-bold mb-4 text-sm uppercase tracking-wide font-heading text-primary">Company</h3>
+              <ul className="space-y-2 opacity-60 text-sm">
+                <li><Link href="/about" className="hover:opacity-100 transition-opacity">About Us</Link></li>
+                <li><Link href="/track" className="hover:opacity-100 transition-opacity">Track Order</Link></li>
+                <li><Link href="/contact" className="hover:opacity-100 transition-opacity">Contact</Link></li>
+                <li><Link href="/faq" className="hover:opacity-100 transition-opacity">FAQ</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-bold mb-4 text-sm uppercase tracking-wide">Account</h3>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="/login" className="hover:text-white transition-colors">Login</Link></li>
-                <li><Link href="/register" className="hover:text-white transition-colors">Create Account</Link></li>
-                <li><Link href="/profile/orders" className="hover:text-white transition-colors">My Orders</Link></li>
+              <h3 className="font-bold mb-4 text-sm uppercase tracking-wide font-heading text-primary">Account</h3>
+              <ul className="space-y-2 opacity-60 text-sm">
+                <li><Link href="/login" className="hover:opacity-100 transition-opacity">Login</Link></li>
+                <li><Link href="/register" className="hover:opacity-100 transition-opacity">Create Account</Link></li>
+                <li><Link href="/profile/orders" className="hover:opacity-100 transition-opacity">My Orders</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center text-gray-500 text-sm gap-4">
+          <div className="border-t border-background/10 pt-8 flex flex-col md:flex-row justify-between items-center opacity-50 text-sm gap-4">
             <p>&copy; 2026 Allio Cosmetics. All rights reserved.</p>
             <div className="flex gap-6">
-              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link href="/privacy" className="hover:opacity-100 transition-opacity">Privacy Policy</Link>
+              <Link href="/terms" className="hover:opacity-100 transition-opacity">Terms of Service</Link>
             </div>
           </div>
         </div>
