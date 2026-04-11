@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { useCart } from "@/store/cart"
 import { createOrderAndPaymentIntent } from "./actions"
 import PaymentForm from "./payment-form"
@@ -11,12 +12,13 @@ function formatPrice(p: number) {
   return `CA$${(p / 100).toFixed(2)}`
 }
 
-const STEPS = ["Contact", "Your Bottle", "Delivery", "Review", "Payment"]
+// 0:Contact  1:Order  2:Delivery  3:Review  4:Payment
+const STEPS = ["Contact", "Order", "Delivery", "Review", "Payment"]
 
 const ORDER_TYPES = [
-  { value: "MAIL_IN", label: "Mail In",     description: "Ship your bottle to us. We return it insured.", emoji: "📦" },
-  { value: "DROPOFF", label: "Drop Off",    description: "Bring your bottle to our studio.",              emoji: "🏪" },
-  { value: "PICKUP",  label: "We Collect",  description: "We pick up from your address (London only).",  emoji: "🚗" },
+  { value: "MAIL_IN", label: "Send it to us",  description: "Ship your bottle — we return it insured.",    emoji: "📦" },
+  { value: "DROPOFF", label: "Drop Off",        description: "Bring your bottle to our studio in person.",  emoji: "🏪" },
+  { value: "PICKUP",  label: "We Collect",      description: "We pick up from your address (London only).", emoji: "🚗" },
 ]
 
 const CONDITIONS = ["Excellent", "Good", "Fair", "Poor — needs assessment"]
@@ -25,6 +27,7 @@ const inputCls = "w-full px-4 py-3 rounded-xl border border-border bg-background
 
 export default function CheckoutPage() {
   const { items, total, clear } = useCart()
+  const { data: session } = useSession()
   const subtotal = total()
 
   const [step,    setStep]    = useState(0)
@@ -40,6 +43,17 @@ export default function CheckoutPage() {
   const [contact,  setContact]  = useState({ name: "", email: "", phone: "" })
   const [bottle,   setBottle]   = useState({ brand: "", fragrance: "", bottleSize: "", condition: "" })
   const [delivery, setDelivery] = useState({ orderType: "MAIL_IN", notes: "", promoCode: "" })
+
+  // Pre-fill contact from session once loaded
+  useEffect(() => {
+    if (session?.user) {
+      setContact((prev) => ({
+        name:  prev.name  || session.user.name  || "",
+        email: prev.email || session.user.email || "",
+        phone: prev.phone || (session.user as { phone?: string }).phone || "",
+      }))
+    }
+  }, [session])
 
   if (items.length === 0) {
     return (
@@ -69,16 +83,16 @@ export default function CheckoutPage() {
     setError(null)
 
     const fd = new FormData()
-    fd.set("name",       contact.name)
-    fd.set("email",      contact.email)
-    fd.set("phone",      contact.phone)
-    fd.set("brand",      bottle.brand)
-    fd.set("fragrance",  bottle.fragrance)
-    fd.set("bottleSize", bottle.bottleSize)
-    fd.set("condition",  bottle.condition)
-    fd.set("orderType",  delivery.orderType)
-    fd.set("notes",      delivery.notes)
-    fd.set("promoCode",  delivery.promoCode)
+    fd.set("name",        contact.name)
+    fd.set("email",       contact.email)
+    fd.set("phone",       contact.phone)
+    fd.set("brand",       bottle.brand)
+    fd.set("fragrance",   bottle.fragrance)
+    fd.set("bottleSize",  bottle.bottleSize)
+    fd.set("condition",   bottle.condition)
+    fd.set("orderType",   delivery.orderType)
+    fd.set("notes",       delivery.notes)
+    fd.set("promoCode",   delivery.promoCode)
     fd.set("cartJson", JSON.stringify(items.map((i) => ({
       id: i.id, slug: i.slug, name: i.name, price: i.price, quantity: i.quantity,
     }))))
@@ -105,14 +119,14 @@ export default function CheckoutPage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Step indicator */}
-        <div className="flex items-center gap-0 mb-12 max-w-2xl mx-auto">
+        <div className="flex items-center mb-12 max-w-2xl mx-auto">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                  i < step  ? "bg-primary text-primary-foreground"
+                  i < step     ? "bg-primary text-primary-foreground"
                   : i === step ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                  : "bg-muted text-muted-foreground"
+                  :              "bg-muted text-muted-foreground"
                 }`}>
                   {i < step ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,7 +146,6 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-10 items-start">
-          {/* Form */}
           <div className="lg:col-span-2">
             <div className="bg-card border border-border rounded-2xl p-8">
 
@@ -147,11 +160,17 @@ export default function CheckoutPage() {
                 <div className="space-y-5">
                   <div>
                     <h2 className="text-xl font-heading font-bold text-foreground mb-1">Contact details</h2>
-                    <p className="text-sm text-muted-foreground">
-                      No account needed.{" "}
-                      <Link href="/login?from=/checkout" className="text-primary hover:underline font-medium">Sign in</Link>
-                      {" "}to use saved details.
-                    </p>
+                    {session?.user ? (
+                      <p className="text-sm text-muted-foreground">
+                        Signed in as <span className="font-medium text-foreground">{session.user.email}</span>. You can edit the fields below.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No account needed.{" "}
+                        <Link href="/login?from=/checkout" className="text-primary hover:underline font-medium">Sign in</Link>
+                        {" "}to use saved details.
+                      </p>
+                    )}
                   </div>
                   <Field label="Full Name" required>
                     <input value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })}
@@ -168,32 +187,74 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* ── Step 1: Bottle ── */}
+              {/* ── Step 1: Order ── */}
               {step === 1 && (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-heading font-bold text-foreground mb-1">About your bottle</h2>
-                    <p className="text-sm text-muted-foreground">Tell us what you&apos;re sending so our team can prepare.</p>
+                    <h2 className="text-xl font-heading font-bold text-foreground mb-1">Your Order</h2>
+                    <p className="text-sm text-muted-foreground">Review the services you selected and tell us about your bottle.</p>
                   </div>
-                  <Field label="Brand" required>
-                    <input value={bottle.brand} onChange={(e) => setBottle({ ...bottle, brand: e.target.value })}
-                      placeholder="e.g. Chanel, Dior, YSL" className={inputCls} />
-                  </Field>
-                  <Field label="Fragrance name" required>
-                    <input value={bottle.fragrance} onChange={(e) => setBottle({ ...bottle, fragrance: e.target.value })}
-                      placeholder="e.g. Bleu de Chanel" className={inputCls} />
-                  </Field>
-                  <Field label="Bottle size" hint="Optional">
-                    <input value={bottle.bottleSize} onChange={(e) => setBottle({ ...bottle, bottleSize: e.target.value })}
-                      placeholder="e.g. 100ml" className={inputCls} />
-                  </Field>
-                  <Field label="Current condition">
-                    <select value={bottle.condition} onChange={(e) => setBottle({ ...bottle, condition: e.target.value })}
-                      className={inputCls}>
-                      <option value="">Select condition</option>
-                      {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </Field>
+
+                  {/* Cart items */}
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Services</p>
+                      <Link href="/cart" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit cart
+                      </Link>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {items.map((item) => (
+                        <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                          <span className="text-xl flex-shrink-0">{item.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">×{item.quantity}</p>
+                          </div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {formatPrice(item.price * item.quantity)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between px-4 py-3 border-t border-border bg-muted/30 text-sm font-bold text-foreground">
+                      <span>Total</span>
+                      <span>{formatPrice(subtotal)}</span>
+                    </div>
+                  </div>
+
+                  {/* Bottle details */}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-3">Your Bottle</p>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="Brand" required>
+                          <input value={bottle.brand} onChange={(e) => setBottle({ ...bottle, brand: e.target.value })}
+                            placeholder="e.g. Chanel, Dior" className={inputCls} />
+                        </Field>
+                        <Field label="Fragrance" required>
+                          <input value={bottle.fragrance} onChange={(e) => setBottle({ ...bottle, fragrance: e.target.value })}
+                            placeholder="e.g. Bleu de Chanel" className={inputCls} />
+                        </Field>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="Bottle size" hint="Optional">
+                          <input value={bottle.bottleSize} onChange={(e) => setBottle({ ...bottle, bottleSize: e.target.value })}
+                            placeholder="e.g. 100ml" className={inputCls} />
+                        </Field>
+                        <Field label="Current condition">
+                          <select value={bottle.condition} onChange={(e) => setBottle({ ...bottle, condition: e.target.value })}
+                            className={inputCls}>
+                            <option value="">Select condition</option>
+                            {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </Field>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -201,8 +262,8 @@ export default function CheckoutPage() {
               {step === 2 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-heading font-bold text-foreground mb-1">How would you like to send it?</h2>
-                    <p className="text-sm text-muted-foreground">Choose how your bottle reaches us.</p>
+                    <h2 className="text-xl font-heading font-bold text-foreground mb-1">Delivery</h2>
+                    <p className="text-sm text-muted-foreground">How would you like to get your bottle to us?</p>
                   </div>
                   <div className="space-y-3">
                     {ORDER_TYPES.map((t) => (
@@ -227,7 +288,7 @@ export default function CheckoutPage() {
                   </div>
                   <Field label="Promo code" hint="Optional">
                     <input value={delivery.promoCode}
-                      onChange={(e) => setDelivery({ ...delivery, promoCode: e.target.value })}
+                      onChange={(e) => setDelivery({ ...delivery, promoCode: e.target.value.toUpperCase() })}
                       placeholder="WELCOME10" className={`${inputCls} uppercase`} />
                   </Field>
                   <Field label="Notes for our team" hint="Optional">
@@ -243,19 +304,32 @@ export default function CheckoutPage() {
               {step === 3 && (
                 <div className="space-y-5">
                   <h2 className="text-xl font-heading font-bold text-foreground">Review your order</h2>
-                  <ReviewRow label="Name"  value={contact.name} />
-                  <ReviewRow label="Email" value={contact.email} />
-                  {contact.phone && <ReviewRow label="Phone" value={contact.phone} />}
-                  <hr className="border-border" />
-                  <ReviewRow label="Bottle"    value={`${bottle.brand} — ${bottle.fragrance}`} />
-                  {bottle.bottleSize && <ReviewRow label="Size"      value={bottle.bottleSize} />}
-                  {bottle.condition  && <ReviewRow label="Condition" value={bottle.condition} />}
-                  <hr className="border-border" />
-                  <ReviewRow label="Delivery" value={ORDER_TYPES.find((t) => t.value === delivery.orderType)?.label ?? ""} />
-                  {delivery.promoCode && <ReviewRow label="Promo code" value={delivery.promoCode.toUpperCase()} />}
-                  {delivery.notes    && <ReviewRow label="Notes"      value={delivery.notes} />}
-                  <hr className="border-border" />
-                  <div className="flex justify-between text-base font-heading font-bold text-foreground pt-1">
+
+                  {/* Contact */}
+                  <Section title="Contact" onEdit={() => setStep(0)}>
+                    <ReviewRow label="Name"  value={contact.name} />
+                    <ReviewRow label="Email" value={contact.email} />
+                    {contact.phone && <ReviewRow label="Phone" value={contact.phone} />}
+                  </Section>
+
+                  {/* Order & Bottle */}
+                  <Section title="Order" onEdit={() => setStep(1)}>
+                    {items.map((item) => (
+                      <ReviewRow key={item.id} label={item.name} value={`${formatPrice(item.price * item.quantity)} ×${item.quantity}`} />
+                    ))}
+                    <ReviewRow label="Bottle" value={`${bottle.brand} — ${bottle.fragrance}`} />
+                    {bottle.bottleSize && <ReviewRow label="Size"      value={bottle.bottleSize} />}
+                    {bottle.condition  && <ReviewRow label="Condition" value={bottle.condition} />}
+                  </Section>
+
+                  {/* Delivery */}
+                  <Section title="Delivery" onEdit={() => setStep(2)}>
+                    <ReviewRow label="Method" value={ORDER_TYPES.find((t) => t.value === delivery.orderType)?.label ?? ""} />
+                    {delivery.promoCode && <ReviewRow label="Promo code" value={delivery.promoCode} />}
+                    {delivery.notes    && <ReviewRow label="Notes"       value={delivery.notes} />}
+                  </Section>
+
+                  <div className="flex justify-between text-base font-heading font-bold text-foreground pt-2 border-t border-border">
                     <span>Total to pay</span>
                     <span>{formatPrice(subtotal)}</span>
                   </div>
@@ -312,7 +386,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Order summary — hidden on payment step */}
+          {/* Order summary sidebar — hidden on payment step */}
           {step < 4 && (
             <div className="lg:col-span-1">
               <div className="bg-card border border-border rounded-2xl p-6 sticky top-24">
@@ -359,6 +433,20 @@ function Field({ label, required, hint, children }: {
         {hint && <span className="text-xs text-muted-foreground ml-auto">{hint}</span>}
       </div>
       {children}
+    </div>
+  )
+}
+
+function Section({ title, onEdit, children }: {
+  title: string; onEdit: () => void; children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-muted/50 border-b border-border">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
+        <button onClick={onEdit} className="text-xs text-primary font-medium hover:underline">Edit</button>
+      </div>
+      <div className="px-4 py-3 space-y-2">{children}</div>
     </div>
   )
 }
