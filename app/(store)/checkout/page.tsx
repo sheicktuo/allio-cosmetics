@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useCart } from "@/store/cart"
@@ -16,9 +16,8 @@ function formatPrice(p: number) {
 const STEPS = ["Contact", "Order", "Delivery", "Review", "Payment"]
 
 const ORDER_TYPES = [
-  { value: "MAIL_IN", label: "Send it to us",  description: "Ship your bottle — we return it insured.",    emoji: "📦" },
   { value: "DROPOFF", label: "Drop Off",        description: "Bring your bottle to our studio in person.",  emoji: "🏪" },
-  { value: "PICKUP",  label: "We Collect",      description: "We pick up from your address (London only).", emoji: "🚗" },
+  { value: "PICKUP",  label: "Pick up",      description: "We pick up from your address (London only).", emoji: "🚗" },
 ]
 
 const CONDITIONS = ["Excellent", "Good", "Fair", "Poor — needs assessment"]
@@ -40,20 +39,19 @@ export default function CheckoutPage() {
   const [paidAmount,   setPaidAmount]   = useState(0)
 
   // Form state
-  const [contact,  setContact]  = useState({ name: "", email: "", phone: "" })
+  // Contact: track only explicit user edits; fall back to session data during render
+  const [contactEdits, setContactEdits] = useState<Partial<{ name: string; email: string; phone: string }>>({})
+  const contact = {
+    name:  contactEdits.name  ?? session?.user?.name  ?? "",
+    email: contactEdits.email ?? session?.user?.email ?? "",
+    phone: contactEdits.phone ?? (session?.user as { phone?: string })?.phone ?? "",
+  }
+  function setContact(field: "name" | "email" | "phone", value: string) {
+    setContactEdits((prev) => ({ ...prev, [field]: value }))
+  }
+
   const [bottle,   setBottle]   = useState({ brand: "", fragrance: "", bottleSize: "", condition: "" })
   const [delivery, setDelivery] = useState({ orderType: "MAIL_IN", notes: "", promoCode: "" })
-
-  // Pre-fill contact from session once loaded
-  useEffect(() => {
-    if (session?.user) {
-      setContact((prev) => ({
-        name:  prev.name  || session.user.name  || "",
-        email: prev.email || session.user.email || "",
-        phone: prev.phone || (session.user as { phone?: string }).phone || "",
-      }))
-    }
-  }, [session])
 
   if (items.length === 0) {
     return (
@@ -173,15 +171,15 @@ export default function CheckoutPage() {
                     )}
                   </div>
                   <Field label="Full Name" required>
-                    <input value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })}
+                    <input value={contact.name} onChange={(e) => setContact("name", e.target.value)}
                       placeholder="Jane Smith" className={inputCls} />
                   </Field>
                   <Field label="Email" required>
-                    <input type="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })}
+                    <input type="email" value={contact.email} onChange={(e) => setContact("email", e.target.value)}
                       placeholder="jane@example.com" className={inputCls} />
                   </Field>
                   <Field label="Phone" hint="Optional — for dispatch updates">
-                    <input type="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })}
+                    <input type="tel" value={contact.phone} onChange={(e) => setContact("phone", e.target.value)}
                       placeholder="+44 7700 900000" className={inputCls} />
                   </Field>
                 </div>
@@ -209,7 +207,7 @@ export default function CheckoutPage() {
                     <div className="divide-y divide-border">
                       {items.map((item) => (
                         <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-                          <span className="text-xl flex-shrink-0">{item.emoji}</span>
+                          <span className="text-xl shrink-0">{item.emoji}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground">{item.name}</p>
                             <p className="text-xs text-muted-foreground">×{item.quantity}</p>
@@ -275,12 +273,12 @@ export default function CheckoutPage() {
                             : "border-border hover:border-primary/40 hover:bg-muted/50"
                         }`}
                       >
-                        <span className="text-3xl flex-shrink-0">{t.emoji}</span>
+                        <span className="text-3xl shrink-0">{t.emoji}</span>
                         <div>
                           <p className="font-semibold text-foreground text-sm">{t.label}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
                         </div>
-                        <div className={`ml-auto w-4 h-4 rounded-full border-2 flex-shrink-0 transition-colors ${
+                        <div className={`ml-auto w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
                           delivery.orderType === t.value ? "border-primary bg-primary" : "border-border"
                         }`} />
                       </button>
@@ -394,12 +392,12 @@ export default function CheckoutPage() {
                 <div className="space-y-3 mb-5">
                   {items.map((item) => (
                     <div key={item.id} className="flex items-center gap-3">
-                      <span className="text-xl flex-shrink-0">{item.emoji}</span>
+                      <span className="text-xl shrink-0">{item.emoji}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
                         <p className="text-xs text-muted-foreground">×{item.quantity}</p>
                       </div>
-                      <p className="text-sm font-semibold text-foreground flex-shrink-0">
+                      <p className="text-sm font-semibold text-foreground shrink-0">
                         {formatPrice(item.price * item.quantity)}
                       </p>
                     </div>
@@ -454,7 +452,7 @@ function Section({ title, onEdit, children }: {
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 text-sm">
-      <span className="text-muted-foreground flex-shrink-0">{label}</span>
+      <span className="text-muted-foreground shrink-0">{label}</span>
       <span className="text-foreground font-medium text-right">{value}</span>
     </div>
   )
