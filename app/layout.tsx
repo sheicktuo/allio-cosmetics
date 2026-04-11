@@ -3,6 +3,7 @@ import { Inter, Playfair_Display } from "next/font/google"
 import "./globals.css"
 import { cn } from "@/lib/utils"
 import Providers from "@/components/layout/providers"
+import { Toaster } from "@/components/ui/sonner"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-heading" })
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <Providers>
           {children}
+          <Toaster richColors position="top-right" />
         </Providers>
       </body>
     </html>

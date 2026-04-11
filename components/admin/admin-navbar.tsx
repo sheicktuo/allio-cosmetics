@@ -7,7 +7,7 @@ import SignOutModal from "@/components/admin/sign-out-modal"
 const pageTitles: Record<string, string> = {
   "/admin/dashboard":   "Dashboard",
   "/admin/orders":      "Orders",
-  "/admin/services":    "Services",
+  "/admin/shop":        "Shop",
   "/admin/customers":   "Customers",
   "/admin/promo-codes": "Promo Codes",
   "/admin/analytics":   "Analytics",
@@ -29,7 +29,7 @@ export default function AdminNavbar({ userName, userRole }: Props) {
       .find(([key]) => pathname.startsWith(key))?.[1] ?? "Admin"
 
   return (
-    <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6 flex-shrink-0">
+    <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6 shrink-0">
       {/* Page title */}
       <h1 className="font-heading font-semibold text-foreground">{title}</h1>
 
@@ -39,7 +39,7 @@ export default function AdminNavbar({ userName, userRole }: Props) {
 
         {/* User badge */}
         <div className="flex items-center gap-2.5 pl-3 border-l border-border">
-          <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0">
             <span className="text-primary-foreground text-xs font-bold font-heading">
               {userName?.[0]?.toUpperCase() ?? "A"}
             </span>

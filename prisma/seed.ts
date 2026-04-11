@@ -28,14 +28,14 @@ async function main() {
     update: {
       // Only update fields that should be refreshed on re-run
       passwordHash,
-      role: Role.SUPERADMIN,
+      role: Role.ADMIN,
       name,
     },
     create: {
       email,
       name,
       passwordHash,
-      role: Role.SUPERADMIN,
+      role: Role.ADMIN,
     },
   })
 

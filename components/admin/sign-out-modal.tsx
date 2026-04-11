@@ -22,7 +22,7 @@ export default function SignOutModal({ variant = "icon" }: Props) {
       {variant === "icon" ? (
         <button
           onClick={() => setOpen(true)}
-          className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+          className="ml-1 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
           title="Sign out"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,7 +33,7 @@ export default function SignOutModal({ variant = "icon" }: Props) {
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -71,14 +71,14 @@ export default function SignOutModal({ variant = "icon" }: Props) {
               <button
                 onClick={() => setOpen(false)}
                 disabled={loading}
-                className="flex-1 py-3 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSignOut}
                 disabled={loading}
-                className="flex-1 py-3 rounded-xl bg-destructive text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl bg-destructive text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <>

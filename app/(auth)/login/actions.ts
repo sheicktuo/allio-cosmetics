@@ -3,6 +3,7 @@
 import { signIn } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { AuthError } from "next-auth"
+import { isRedirectError } from "next/dist/client/components/redirect-error"
 
 const ROLE_HOME: Record<string, string> = {
   SUPERADMIN: "/admin/dashboard",
@@ -11,13 +12,14 @@ const ROLE_HOME: Record<string, string> = {
   CUSTOMER:   "/profile/orders",
 }
 
-export async function loginAction(formData: FormData) {
-  const email = formData.get("email") as string
+export async function loginAction(
+  _: unknown,
+  formData: FormData,
+): Promise<{ error: string } | { success: true; redirectTo: string }> {
+  const email    = formData.get("email") as string
   const password = formData.get("password") as string
-  const from = (formData.get("from") as string | null) || null
+  const from     = (formData.get("from") as string | null) || null
 
-  // Look up role before signing in so we can redirect correctly.
-  // Auth still happens inside NextAuth's authorize() — this is only for routing.
   let redirectTo = "/profile/orders"
   try {
     const user = await prisma.user.findUnique({
@@ -25,8 +27,6 @@ export async function loginAction(formData: FormData) {
       select: { role: true },
     })
     if (user) {
-      // If the user was sent to login from a protected page, honour that URL
-      // only for customers — admins/staff always go to their dashboard.
       if (user.role === "CUSTOMER" && from) {
         redirectTo = from
       } else {
@@ -34,15 +34,21 @@ export async function loginAction(formData: FormData) {
       }
     }
   } catch {
-    // DB unreachable — fall back to default, auth will still validate
+    // DB unreachable — fall back to default
   }
 
   try {
-    await signIn("credentials", { email, password, redirectTo })
+    await signIn("credentials", { email, password, redirect: false })
+    return { success: true, redirectTo }
   } catch (e) {
+    if (isRedirectError(e)) throw e
     if (e instanceof AuthError) {
-      return { error: "Invalid email or password." }
+      const type = (e as AuthError).type
+      if (type === "CredentialsSignin") {
+        return { error: "Invalid email or password." }
+      }
+      return { error: "Authentication failed. Please try again." }
     }
-    throw e
+    return { error: "Something went wrong. Please try again." }
   }
 }

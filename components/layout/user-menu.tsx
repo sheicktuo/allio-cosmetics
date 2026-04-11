@@ -21,7 +21,7 @@ function UserAvatar({ name }: { name: string }) {
     .toUpperCase()
 
   return (
-    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold font-heading flex-shrink-0 select-none">
+    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold font-heading shrink-0 select-none">
       {initials || "?"}
     </div>
   )

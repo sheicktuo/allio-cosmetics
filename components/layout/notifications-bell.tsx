@@ -139,7 +139,7 @@ export default function NotificationsBell() {
                       <p className="text-xs font-semibold text-foreground">Order {n.orderNumber}</p>
                       <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
                       <p className="text-[10px] text-muted-foreground/60 mt-1">
-                        {n.at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                        {n.at.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                   </button>

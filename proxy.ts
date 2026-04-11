@@ -5,7 +5,7 @@ const ROLE_HOME: Record<string, string> = {
   SUPERADMIN: "/admin/dashboard",
   ADMIN:      "/admin/dashboard",
   STAFF:      "/staff",
-  CUSTOMER:   "/profile/orders",
+  CUSTOMER:   "/",
 }
 
 export default auth((req) => {

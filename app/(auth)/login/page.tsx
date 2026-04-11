@@ -1,32 +1,39 @@
+"use client"
+
+import { useEffect, useActionState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import PasswordInput from "@/components/ui/password-input"
 import { loginAction } from "./actions"
 
-export const metadata = { title: "Sign In — Allio Cosmetics" }
+export default function LoginPage() {
+  const router = useRouter()
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: { error?: string; from?: string; registered?: string }
-}) {
-  const errorMap: Record<string, string> = {
-    CredentialsSignin: "Invalid email or password.",
-    MissingCSRF: "Session expired. Please try again.",
-  }
-  const error = searchParams.error ? (errorMap[searchParams.error] ?? "Something went wrong.") : null
+  const [state, formAction, pending] = useActionState(loginAction, undefined)
+
+  useEffect(() => {
+    if (!state) return
+    if ("error" in state) {
+      toast.error(state.error)
+    } else if ("success" in state) {
+      toast.success("Welcome back!")
+      router.push(state.redirectTo)
+    }
+  // router is a stable singleton — intentionally excluded from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state])
 
   return (
     <div className="min-h-screen bg-background flex">
 
       {/* ── Left decorative panel ─────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-1/2 bg-foreground flex-col justify-between p-14 relative overflow-hidden">
-        {/* Gold glow orbs */}
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-primary rounded-full opacity-10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-primary rounded-full opacity-10 blur-3xl pointer-events-none" />
 
-        {/* Logo */}
         <Link href="/" className="relative flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center shrink-0">
             <span className="text-primary-foreground font-bold font-heading">A</span>
           </div>
           <span className="text-xl font-bold font-heading tracking-wide text-background">
@@ -34,7 +41,6 @@ export default function LoginPage({
           </span>
         </Link>
 
-        {/* Quote */}
         <div className="relative space-y-6">
           <p className="text-5xl font-heading font-bold text-background leading-[1.15]">
             The finest fragrances<br />
@@ -45,7 +51,6 @@ export default function LoginPage({
           </p>
         </div>
 
-        {/* Bottom stats */}
         <div className="relative flex gap-10">
           {[
             { value: "500+", label: "Bottles restored" },
@@ -63,7 +68,6 @@ export default function LoginPage({
       {/* ── Right form panel ──────────────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
 
-        {/* Mobile logo */}
         <Link href="/" className="flex items-center gap-2.5 mb-10 lg:hidden">
           <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
             <span className="text-primary-foreground font-bold font-heading">A</span>
@@ -79,24 +83,7 @@ export default function LoginPage({
             <p className="text-muted-foreground mt-1.5">Sign in to your account to continue</p>
           </div>
 
-          {/* Success */}
-          {searchParams.registered && (
-            <div className="mb-5 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-sm">
-              Account created — sign in to continue.
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="mb-5 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-              {error}
-            </div>
-          )}
-
-          <form action={loginAction} className="space-y-5">
-            {searchParams.from && (
-              <input type="hidden" name="from" value={searchParams.from} />
-            )}
+          <form action={formAction} className="space-y-5">
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
@@ -117,10 +104,7 @@ export default function LoginPage({
                 <label htmlFor="password" className="text-sm font-medium text-foreground">
                   Password
                 </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-primary hover:underline font-medium"
-                >
+                <Link href="/forgot-password" className="text-xs text-primary hover:underline font-medium">
                   Forgot password?
                 </Link>
               </div>
@@ -135,9 +119,18 @@ export default function LoginPage({
 
             <button
               type="submit"
-              className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 mt-2"
+              disabled={pending}
+              className="w-full bg-primary text-primary-foreground font-semibold py-3.5 rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              Sign In
+              {pending ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Signing in…
+                </>
+              ) : "Sign In"}
             </button>
           </form>
 

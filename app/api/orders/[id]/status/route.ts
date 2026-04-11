@@ -15,13 +15,14 @@ const STATUS_FLOW = [
 
 type OrderStatus = (typeof STATUS_FLOW)[number]
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session || !["STAFF", "ADMIN", "SUPERADMIN"].includes(session.user?.role ?? "")) {
+  if (!session || !["ADMIN", "SUPERADMIN"].includes(session.user?.role ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const order = await prisma.serviceOrder.findUnique({ where: { id: params.id } })
+  const { id } = await params
+  const order = await prisma.serviceOrder.findUnique({ where: { id } })
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const currentIndex = STATUS_FLOW.indexOf(order.status as OrderStatus)
@@ -32,14 +33,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const nextStatus = STATUS_FLOW[currentIndex + 1]
 
   const updated = await prisma.serviceOrder.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       status: nextStatus,
       statusHistory: {
-        create: {
-          status: nextStatus,
-          changedBy: session.user.id,
-        },
+        create: { status: nextStatus, changedBy: session.user.id },
       },
     },
   })
@@ -47,19 +45,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({ order: updated })
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
-  if (!session || !["STAFF", "ADMIN", "SUPERADMIN"].includes(session.user?.role ?? "")) {
+  if (!session || !["ADMIN", "SUPERADMIN"].includes(session.user?.role ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const { id } = await params
   const { status, note } = await req.json()
   if (!STATUS_FLOW.includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 })
   }
 
   const updated = await prisma.serviceOrder.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       status,
       statusHistory: {

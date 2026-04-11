@@ -25,7 +25,7 @@ function Header() {
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[68px] flex items-center justify-between gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
               <span className="text-primary-foreground font-bold font-heading">A</span>
             </div>
@@ -52,7 +52,7 @@ function Header() {
           </div>
 
           {/* Desktop right actions */}
-          <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+          <div className="hidden md:flex items-center gap-2 shrink-0">
             <DarkModeToggle />
             <NotificationsBell />
             <CartDrawer />
