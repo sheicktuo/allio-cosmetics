@@ -69,12 +69,12 @@ export async function createOrderAndPaymentIntent(formData: FormData) {
   const slugs    = cartItems.map((i) => i.slug)
   const sizeIds  = cartItems.flatMap((i) => i.sizeId ? [i.sizeId] : [])
 
-  const [products, sizes] = await Promise.all([
-    prisma.product.findMany({ where: { slug: { in: slugs }, isActive: true } }),
-    sizeIds.length > 0
-      ? prisma.productSize.findMany({ where: { id: { in: sizeIds }, isActive: true } })
-      : Promise.resolve([] as Awaited<ReturnType<typeof prisma.productSize.findMany>>),
-  ])
+  const products = await prisma.product.findMany({
+    where: { slug: { in: slugs }, isActive: true },
+  })
+  const sizes = sizeIds.length > 0
+    ? await prisma.productSize.findMany({ where: { id: { in: sizeIds }, isActive: true } })
+    : []
 
   const productMap = Object.fromEntries(products.map((p) => [p.slug, p]))
   const sizeMap    = Object.fromEntries(sizes.map((s) => [s.id, s]))
