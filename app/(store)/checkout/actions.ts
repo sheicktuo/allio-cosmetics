@@ -73,7 +73,7 @@ export async function createOrderAndPaymentIntent(formData: FormData) {
     prisma.product.findMany({ where: { slug: { in: slugs }, isActive: true } }),
     sizeIds.length > 0
       ? prisma.productSize.findMany({ where: { id: { in: sizeIds }, isActive: true } })
-      : Promise.resolve([]),
+      : Promise.resolve([] as Awaited<ReturnType<typeof prisma.productSize.findMany>>),
   ])
 
   const productMap = Object.fromEntries(products.map((p) => [p.slug, p]))
