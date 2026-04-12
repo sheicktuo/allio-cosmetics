@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const orderNumber = pi.metadata?.orderNumber
 
     if (orderNumber) {
-      const order = await prisma.serviceOrder.update({
+      const order = await prisma.order.update({
         where: { orderNumber },
         data: {
           paymentStatus:   "PAID",
@@ -54,9 +54,21 @@ export async function POST(req: NextRequest) {
     const orderNumber = pi.metadata?.orderNumber
 
     if (orderNumber) {
-      await prisma.serviceOrder.update({
+      await prisma.order.update({
         where: { orderNumber },
         data:  { paymentStatus: "FAILED" },
+      })
+    }
+  }
+
+  if (event.type === "payment_intent.canceled") {
+    const pi          = event.data.object as Stripe.PaymentIntent
+    const orderNumber = pi.metadata?.orderNumber
+
+    if (orderNumber) {
+      await prisma.order.updateMany({
+        where: { orderNumber, status: "PENDING" },
+        data:  { status: "CANCELLED", paymentStatus: "FAILED" },
       })
     }
   }
@@ -66,7 +78,7 @@ export async function POST(req: NextRequest) {
     const pi     = charge.payment_intent as string
 
     if (pi) {
-      await prisma.serviceOrder.updateMany({
+      await prisma.order.updateMany({
         where: { paymentIntentId: pi },
         data:  { paymentStatus: "REFUNDED", status: "REFUNDED" },
       })

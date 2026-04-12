@@ -4,21 +4,16 @@ import Link from "next/link"
 export const metadata = { title: "Orders — Admin" }
 
 const STATUS_BADGE: Record<string, string> = {
-  PENDING:        "bg-muted text-muted-foreground",
-  CONFIRMED:      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  RECEIVED:       "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
-  ASSESSING:      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  RECONDITIONING: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  QUALITY_CHECK:  "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  READY:          "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  DELIVERED:      "bg-green-200 text-green-800 dark:bg-green-900/50 dark:text-green-300",
-  CANCELLED:      "bg-destructive/10 text-destructive",
+  PENDING:    "bg-muted text-muted-foreground",
+  CONFIRMED:  "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  PROCESSING: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  SHIPPED:    "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  DELIVERED:  "bg-green-200 text-green-800 dark:bg-green-900/50 dark:text-green-300",
+  CANCELLED:  "bg-destructive/10 text-destructive",
+  REFUNDED:   "bg-destructive/10 text-destructive",
 }
 
-const ALL_STATUSES = [
-  "PENDING", "CONFIRMED", "RECEIVED", "ASSESSING",
-  "RECONDITIONING", "QUALITY_CHECK", "READY", "DELIVERED", "CANCELLED",
-]
+const ALL_STATUSES = ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"]
 
 export default async function AdminOrdersPage({
   searchParams,
@@ -32,18 +27,17 @@ export default async function AdminOrdersPage({
   const where = statusFilter ? { status: statusFilter as never } : {}
 
   const [orders, total] = await Promise.all([
-    prisma.serviceOrder.findMany({
+    prisma.order.findMany({
       where,
       take:    perPage,
       skip:    (page - 1) * perPage,
       orderBy: { createdAt: "desc" },
       include: {
-        bottles: { take: 1 },
-        items:   { include: { service: true }, take: 1 },
-        user:    { select: { name: true, email: true } },
+        items: { include: { product: true }, take: 1 },
+        user:  { select: { name: true, email: true } },
       },
     }),
-    prisma.serviceOrder.count({ where }),
+    prisma.order.count({ where }),
   ])
 
   return (
@@ -84,9 +78,8 @@ export default async function AdminOrdersPage({
               <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted/50">
                 <th className="px-5 py-3">Order</th>
                 <th className="px-5 py-3">Customer</th>
-                <th className="px-5 py-3">Bottle</th>
-                <th className="px-5 py-3">Service</th>
-                <th className="px-5 py-3">Type</th>
+                <th className="px-5 py-3">Product</th>
+                <th className="px-5 py-3">Shipping to</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Total</th>
                 <th className="px-5 py-3">Date</th>
@@ -96,7 +89,7 @@ export default async function AdminOrdersPage({
             <tbody className="divide-y divide-border">
               {orders.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-5 py-10 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">
                     No orders found
                   </td>
                 </tr>
@@ -113,12 +106,11 @@ export default async function AdminOrdersPage({
                     <p className="text-muted-foreground text-xs">{order.user?.email ?? order.guestEmail}</p>
                   </td>
                   <td className="px-5 py-3 text-sm text-muted-foreground">
-                    {order.bottles[0]?.brand ?? "—"}
+                    {order.items[0]?.product.name ?? "—"}
                   </td>
                   <td className="px-5 py-3 text-sm text-muted-foreground">
-                    {order.items[0]?.service.name ?? "—"}
+                    {[order.shippingCity, order.shippingCountry].filter(Boolean).join(", ") || "—"}
                   </td>
-                  <td className="px-5 py-3 text-sm text-muted-foreground">{order.orderType}</td>
                   <td className="px-5 py-3">
                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_BADGE[order.status] ?? "bg-muted text-muted-foreground"}`}>
                       {order.status}
@@ -128,7 +120,8 @@ export default async function AdminOrdersPage({
                     CA${(order.total / 100).toFixed(2)}
                   </td>
                   <td className="px-5 py-3 text-sm text-muted-foreground">
-                    {new Date(order.createdAt).toLocaleDateString("en-CA")}
+                    <span className="block">{new Date(order.createdAt).toLocaleDateString("en-CA")}</span>
+                    <span className="block text-xs">{new Date(order.createdAt).toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}</span>
                   </td>
                   <td className="px-5 py-3">
                     <Link href={`/admin/orders/${order.id}`} className="text-xs text-primary font-medium hover:underline">

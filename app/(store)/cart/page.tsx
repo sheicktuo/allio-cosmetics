@@ -29,7 +29,7 @@ export default function CartPage() {
           <div className="text-center py-24">
             <p className="text-7xl mb-6">🛍️</p>
             <p className="text-xl font-heading font-semibold text-foreground mb-2">Nothing here yet</p>
-            <p className="text-muted-foreground mb-8">Browse our collections and find the perfect service for your fragrance.</p>
+            <p className="text-muted-foreground mb-8">Browse our collections and find your perfect fragrance.</p>
             <Link
               href="/shop"
               className="inline-block bg-primary text-primary-foreground font-semibold px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity"

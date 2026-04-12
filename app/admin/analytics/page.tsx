@@ -6,18 +6,14 @@ function fmt(cents: number) {
   return `CA$${(cents / 100).toFixed(2)}`
 }
 
-// Status bar colours — intentional distinct-state indicators
 const STATUS_BAR: Record<string, string> = {
-  PENDING:        "bg-muted-foreground",
-  CONFIRMED:      "bg-blue-500",
-  RECEIVED:       "bg-indigo-500",
-  ASSESSING:      "bg-purple-500",
-  RECONDITIONING: "bg-amber-500",
-  QUALITY_CHECK:  "bg-orange-500",
-  READY:          "bg-green-500",
-  DELIVERED:      "bg-green-600",
-  CANCELLED:      "bg-destructive",
-  REFUNDED:       "bg-destructive/70",
+  PENDING:    "bg-muted-foreground",
+  CONFIRMED:  "bg-blue-500",
+  PROCESSING: "bg-amber-500",
+  SHIPPED:    "bg-indigo-500",
+  DELIVERED:  "bg-green-600",
+  CANCELLED:  "bg-destructive",
+  REFUNDED:   "bg-destructive/70",
 }
 
 export default async function AdminAnalyticsPage() {
@@ -27,21 +23,21 @@ export default async function AdminAnalyticsPage() {
   const [
     allOrders,
     statusBreakdown,
-    topServiceItems,
+    topProductItems,
     newCustomersThisMonth,
     totalCustomers,
   ] = await Promise.all([
-    prisma.serviceOrder.findMany({
+    prisma.order.findMany({
       where:   { paymentStatus: "PAID", createdAt: { gte: start } },
       select:  { total: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
-    prisma.serviceOrder.groupBy({
-      by:      ["status"],
-      _count:  { id: true },
+    prisma.order.groupBy({
+      by:     ["status"],
+      _count: { id: true },
     }),
-    prisma.serviceOrderItem.groupBy({
-      by:      ["serviceId"],
+    prisma.orderItem.groupBy({
+      by:      ["productId"],
       _sum:    { total: true },
       _count:  { id: true },
       orderBy: { _sum: { total: "desc" } },
@@ -56,12 +52,12 @@ export default async function AdminAnalyticsPage() {
     prisma.user.count({ where: { role: "CUSTOMER" } }),
   ])
 
-  const serviceIds = topServiceItems.map((t) => t.serviceId)
-  const services   = await prisma.service.findMany({
-    where:  { id: { in: serviceIds } },
+  const productIds = topProductItems.map((t) => t.productId)
+  const products   = await prisma.product.findMany({
+    where:  { id: { in: productIds } },
     select: { id: true, name: true },
   })
-  const serviceMap = Object.fromEntries(services.map((s) => [s.id, s.name]))
+  const productMap = Object.fromEntries(products.map((p) => [p.id, p.name]))
 
   // Build 6-month revenue buckets
   const months: { label: string; revenue: number; orders: number }[] = []
@@ -78,15 +74,15 @@ export default async function AdminAnalyticsPage() {
     if (idx !== -1) { months[idx].revenue += o.total; months[idx].orders += 1 }
   }
 
-  const totalRevenue6m = months.reduce((s, m) => s + m.revenue, 0)
-  const totalOrders6m  = months.reduce((s, m) => s + m.orders, 0)
-  const maxRevenue     = Math.max(...months.map((m) => m.revenue), 1)
+  const totalRevenue6m   = months.reduce((s, m) => s + m.revenue, 0)
+  const totalOrders6m    = months.reduce((s, m) => s + m.orders, 0)
+  const maxRevenue       = Math.max(...months.map((m) => m.revenue), 1)
   const totalStatusCount = statusBreakdown.reduce((s, r) => s + r._count.id, 0) || 1
 
   const stats = [
-    { label: "Revenue (6 mo.)", value: fmt(totalRevenue6m),           accent: "text-green-600 dark:text-green-400" },
-    { label: "Orders (6 mo.)",  value: totalOrders6m.toString(),      accent: "text-blue-600 dark:text-blue-400" },
-    { label: "Total Customers", value: totalCustomers.toString(),     accent: "text-violet-600 dark:text-violet-400" },
+    { label: "Revenue (6 mo.)", value: fmt(totalRevenue6m),              accent: "text-green-600 dark:text-green-400" },
+    { label: "Orders (6 mo.)",  value: totalOrders6m.toString(),         accent: "text-blue-600 dark:text-blue-400" },
+    { label: "Total Customers", value: totalCustomers.toString(),        accent: "text-violet-600 dark:text-violet-400" },
     { label: "New This Month",  value: newCustomersThisMonth.toString(), accent: "text-primary" },
   ]
 
@@ -154,32 +150,32 @@ export default async function AdminAnalyticsPage() {
         </div>
       </div>
 
-      {/* Top services */}
+      {/* Top products */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="px-5 py-4 border-b border-border">
-          <h2 className="font-semibold text-foreground">Top Services by Revenue</h2>
+          <h2 className="font-semibold text-foreground">Top Products by Revenue</h2>
         </div>
         <table className="w-full">
           <thead>
             <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted/50">
-              <th className="px-5 py-3">Service</th>
+              <th className="px-5 py-3">Product</th>
               <th className="px-5 py-3">Times Ordered</th>
               <th className="px-5 py-3">Revenue</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {topServiceItems.length === 0 && (
+            {topProductItems.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-5 py-8 text-center text-muted-foreground">
                   No order data yet
                 </td>
               </tr>
             )}
-            {topServiceItems.map((row, i) => (
-              <tr key={row.serviceId} className="hover:bg-muted/30 transition-colors">
+            {topProductItems.map((row, i) => (
+              <tr key={row.productId} className="hover:bg-muted/30 transition-colors">
                 <td className="px-5 py-3 text-sm font-medium text-foreground">
                   <span className="text-muted-foreground mr-2">#{i + 1}</span>
-                  {serviceMap[row.serviceId] ?? row.serviceId}
+                  {productMap[row.productId] ?? row.productId}
                 </td>
                 <td className="px-5 py-3 text-sm text-muted-foreground">{row._count.id}</td>
                 <td className="px-5 py-3 text-sm font-semibold text-green-600 dark:text-green-400">

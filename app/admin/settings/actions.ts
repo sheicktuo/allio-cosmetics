@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/require-admin"
 import { revalidatePath } from "next/cache"
 
 export async function saveSettings(
@@ -8,18 +9,15 @@ export async function saveSettings(
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean }> {
   try {
+    await requireAdmin()
     const data = {
-      businessName:   (formData.get("businessName") as string) || "Allio Cosmetics",
-      email:          (formData.get("email") as string) || null,
-      phone:          (formData.get("phone") as string) || null,
-      address:        (formData.get("address") as string) || null,
-      city:           (formData.get("city") as string) || null,
-      country:        (formData.get("country") as string) || null,
-      currency:       (formData.get("currency") as string) || "CAD",
-      turnaroundDays: parseInt((formData.get("turnaroundDays") as string) || "5"),
-      mailInEnabled:  formData.get("mailInEnabled") === "true",
-      pickupEnabled:  formData.get("pickupEnabled") === "true",
-      dropoffEnabled: formData.get("dropoffEnabled") === "true",
+      businessName: (formData.get("businessName") as string) || "Allio Cosmetics",
+      email:        (formData.get("email") as string) || null,
+      phone:        (formData.get("phone") as string) || null,
+      address:      (formData.get("address") as string) || null,
+      city:         (formData.get("city") as string) || null,
+      country:      (formData.get("country") as string) || null,
+      currency:     (formData.get("currency") as string) || "CAD",
     }
 
     const existing = await prisma.businessSettings.findFirst()

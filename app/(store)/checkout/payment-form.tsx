@@ -16,13 +16,14 @@ type Props = {
   clientSecret: string
   orderNumber:  string
   amount:       number
+  email:        string
 }
 
 function fmt(n: number) {
   return `CA$${(n / 100).toFixed(2)}`
 }
 
-function InnerForm({ orderNumber, amount }: { orderNumber: string; amount: number }) {
+function InnerForm({ orderNumber, amount, email }: { orderNumber: string; amount: number; email: string }) {
   const stripe   = useStripe()
   const elements = useElements()
   const [error,   setError]   = useState<string | null>(null)
@@ -39,6 +40,9 @@ function InnerForm({ orderNumber, amount }: { orderNumber: string; amount: numbe
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/checkout/success?order=${orderNumber}`,
+        payment_method_data: {
+          billing_details: { email },
+        },
       },
     })
 
@@ -104,7 +108,7 @@ function InnerForm({ orderNumber, amount }: { orderNumber: string; amount: numbe
   )
 }
 
-export default function PaymentForm({ clientSecret, orderNumber, amount }: Props) {
+export default function PaymentForm({ clientSecret, orderNumber, amount, email }: Props) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
 
@@ -129,7 +133,7 @@ export default function PaymentForm({ clientSecret, orderNumber, amount }: Props
         },
       }}
     >
-      <InnerForm orderNumber={orderNumber} amount={amount} />
+      <InnerForm orderNumber={orderNumber} amount={amount} email={email} />
     </Elements>
   )
 }

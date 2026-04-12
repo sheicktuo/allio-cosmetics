@@ -3,14 +3,15 @@ import PasswordInput from "@/components/ui/password-input"
 
 export const metadata = { title: "Create Account — Allio Cosmetics" }
 
-export default function RegisterPage({
+export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: { error?: string }
+  searchParams: Promise<{ error?: string }>
 }) {
-  const error = searchParams.error === "EmailTaken"
+  const { error: errorParam } = await searchParams
+  const error = errorParam === "EmailTaken"
     ? "An account with that email already exists."
-    : searchParams.error
+    : errorParam
       ? "Something went wrong. Please try again."
       : null
 

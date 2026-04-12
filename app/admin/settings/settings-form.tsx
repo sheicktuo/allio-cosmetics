@@ -5,17 +5,13 @@ import { toast } from "sonner"
 import { saveSettings } from "./actions"
 
 type Settings = {
-  businessName:   string
-  email:          string | null
-  phone:          string | null
-  address:        string | null
-  city:           string | null
-  country:        string | null
-  currency:       string
-  turnaroundDays: number
-  mailInEnabled:  boolean
-  pickupEnabled:  boolean
-  dropoffEnabled: boolean
+  businessName: string
+  email:        string | null
+  phone:        string | null
+  address:      string | null
+  city:         string | null
+  country:      string | null
+  currency:     string
 }
 
 const inputCls = "w-full px-3 py-2 text-sm border border-border rounded-lg bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -78,48 +74,6 @@ export default function SettingsForm({ settings }: { settings: Settings | null }
             <label className={labelCls}>Country</label>
             <input name="country" defaultValue={s?.country ?? "Canada"} placeholder="Canada" className={inputCls} />
           </div>
-        </div>
-      </div>
-
-      {/* Operations */}
-      <div className="bg-card rounded-xl border border-border p-5">
-        <h2 className="font-semibold text-foreground mb-4">Operations</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>Default Turnaround (days)</label>
-            <input
-              name="turnaroundDays"
-              type="number"
-              min={1}
-              max={90}
-              defaultValue={s?.turnaroundDays ?? 5}
-              className={inputCls}
-            />
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Enabled Order Types</p>
-          {[
-            { name: "mailInEnabled",  label: "Mail In",   defaultChecked: s?.mailInEnabled  ?? true },
-            { name: "pickupEnabled",  label: "Pickup",    defaultChecked: s?.pickupEnabled  ?? true },
-            { name: "dropoffEnabled", label: "Drop Off",  defaultChecked: s?.dropoffEnabled ?? true },
-          ].map((opt) => (
-            <label key={opt.name} className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name={opt.name}
-                value="true"
-                defaultChecked={opt.defaultChecked}
-                className="w-4 h-4 accent-primary rounded"
-              />
-              <span className="text-sm text-foreground">{opt.label}</span>
-            </label>
-          ))}
-          {/* Hidden fields so unchecked checkboxes still send "false" */}
-          {["mailInEnabled", "pickupEnabled", "dropoffEnabled"].map((n) => (
-            <input key={n} type="hidden" name={n} value="false" />
-          ))}
         </div>
       </div>
 

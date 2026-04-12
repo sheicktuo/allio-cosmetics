@@ -1,6 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import Header from "@/components/layout/header"
+import Footer from "@/components/layout/footer"
 import { getActiveCategories, categoryEmoji } from "@/lib/shop"
 
 export const metadata = { title: "Collections — Allio Cosmetics" }
@@ -73,7 +74,7 @@ export default async function CollectionsPage() {
               <div className={`${i % 2 === 1 ? "md:order-1" : ""} md:w-3/5 p-10 flex flex-col justify-center`}>
                 <div className="flex items-center gap-3 mb-4">
                   <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-                    {cat._count.services} product{cat._count.services !== 1 ? "s" : ""}
+                    {cat._count.products} product{cat._count.products !== 1 ? "s" : ""}
                   </span>
                 </div>
 
@@ -117,15 +118,7 @@ export default async function CollectionsPage() {
         </div>
       </section>
 
-      <footer className="bg-foreground text-background py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm opacity-60">
-          <p>&copy; 2026 Allio Cosmetics. All rights reserved.</p>
-          <div className="flex gap-6">
-            <Link href="/privacy" className="hover:opacity-100 transition-opacity">Privacy Policy</Link>
-            <Link href="/terms" className="hover:opacity-100 transition-opacity">Terms of Service</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

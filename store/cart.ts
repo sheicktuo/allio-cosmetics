@@ -2,13 +2,16 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 export type CartItem = {
-  id: string
-  slug: string
-  name: string
-  price: number
-  emoji: string
+  id:         string   // `${productId}` or `${productId}-${sizeId}` when sized
+  productId:  string
+  slug:       string
+  name:       string
+  price:      number
+  emoji:      string
   collection: string
-  quantity: number
+  quantity:   number
+  sizeId?:    string
+  sizeLabel?: string
 }
 
 type CartStore = {

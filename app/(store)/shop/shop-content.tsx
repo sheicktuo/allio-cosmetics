@@ -5,11 +5,11 @@ import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { useCart } from "@/store/cart"
-import type { ShopService } from "@/lib/shop"
+import type { ShopProduct } from "@/lib/shop"
 
 const sortOptions = [
-  { value: "featured", label: "Sort: Featured" },
-  { value: "price-asc", label: "Price: Low to High" },
+  { value: "featured",   label: "Sort: Featured" },
+  { value: "price-asc",  label: "Price: Low to High" },
   { value: "price-desc", label: "Price: High to Low" },
 ]
 
@@ -17,24 +17,22 @@ function formatPrice(cents: number) {
   return `CA$${(cents / 100).toFixed(0)}`
 }
 
-type Props = { services: ShopService[] }
+type Props = { products: ShopProduct[] }
 
-export default function ShopContent({ services }: Props) {
+export default function ShopContent({ products }: Props) {
   const searchParams  = useSearchParams()
   const activeFilter  = searchParams.get("filter") ?? "All"
   const sort          = searchParams.get("sort")   ?? "featured"
   const { add, items } = useCart()
 
-  // Derive collection list from live data
-  const collections = ["All", ...Array.from(new Set(services.map((s) => s.category.name)))]
+  const collections = ["All", ...Array.from(new Set(products.map((p) => p.category.name)))]
 
   const filtered =
-    activeFilter === "All" ? services : services.filter((s) => s.category.name === activeFilter)
+    activeFilter === "All" ? products : products.filter((p) => p.category.name === activeFilter)
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === "price-asc")  return a.price - b.price
     if (sort === "price-desc") return b.price - a.price
-    // "featured": featured first, then by sortOrder
     if (a.isFeatured !== b.isFeatured) return a.isFeatured ? -1 : 1
     return 0
   })
@@ -43,8 +41,8 @@ export default function ShopContent({ services }: Props) {
     const params = new URLSearchParams()
     const f = newFilter ?? activeFilter
     const s = newSort   ?? sort
-    if (f !== "All")       params.set("filter", f)
-    if (s !== "featured")  params.set("sort", s)
+    if (f !== "All")      params.set("filter", f)
+    if (s !== "featured") params.set("sort", s)
     return `/shop${params.toString() ? `?${params}` : ""}`
   }
 
@@ -87,23 +85,23 @@ export default function ShopContent({ services }: Props) {
 
       {/* Product grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {sorted.map((svc) => {
-          const inCart = items.some((i) => i.id === svc.id)
+        {sorted.map((product) => {
+          const inCart = items.some((i) => i.id === product.id)
           return (
             <div
-              key={svc.id}
+              key={product.id}
               className="group border border-border rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 bg-card hover:border-primary/30 flex flex-col"
             >
-              <Link href={`/shop/product/${svc.slug}`} className="flex-1">
+              <Link href={`/shop/product/${product.slug}`} className="flex-1">
                 <div className="relative aspect-square bg-gradient-to-br from-primary/10 via-muted to-accent flex items-center justify-center overflow-hidden">
-                  {svc.imageUrl ? (
-                    <Image src={svc.imageUrl} alt={svc.name} fill className="object-cover" />
+                  {product.imageUrl ? (
+                    <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
                   ) : (
                     <span className="text-7xl group-hover:scale-110 transition-transform duration-500">
-                      {svc.emoji}
+                      {product.emoji}
                     </span>
                   )}
-                  {svc.isFeatured && (
+                  {product.isFeatured && (
                     <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground border-0 text-xs">
                       Featured
                     </Badge>
@@ -112,20 +110,17 @@ export default function ShopContent({ services }: Props) {
 
                 <div className="p-5 pb-3">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">
-                    {svc.category.name}
+                    {product.category.name}
                   </p>
                   <h3 className="font-heading font-semibold text-foreground leading-snug mb-1">
-                    {svc.name}
+                    {product.name}
                   </h3>
-                  {svc.description && (
+                  {product.description && (
                     <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">
-                      {svc.description}
+                      {product.description}
                     </p>
                   )}
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-foreground">{formatPrice(svc.price)}</span>
-                    <span className="text-xs text-muted-foreground">{svc.turnaroundDays}-day turnaround</span>
-                  </div>
+                  <span className="text-lg font-bold text-foreground">{formatPrice(product.price)}</span>
                 </div>
               </Link>
 
@@ -133,12 +128,13 @@ export default function ShopContent({ services }: Props) {
                 <button
                   onClick={() =>
                     add({
-                      id:         svc.id,
-                      slug:       svc.slug,
-                      name:       svc.name,
-                      price:      svc.price,
-                      emoji:      svc.emoji,
-                      collection: svc.category.name,
+                      id:         product.id,
+                      productId:  product.id,
+                      slug:       product.slug,
+                      name:       product.name,
+                      price:      product.price,
+                      emoji:      product.emoji,
+                      collection: product.category.name,
                     })
                   }
                   className={`w-full mt-2 text-sm font-semibold py-2.5 rounded-xl transition-all ${

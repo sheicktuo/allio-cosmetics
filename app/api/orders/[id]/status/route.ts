@@ -3,14 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 
 const STATUS_FLOW = [
-  "PENDING",
-  "CONFIRMED",
-  "RECEIVED",
-  "ASSESSING",
-  "RECONDITIONING",
-  "QUALITY_CHECK",
-  "READY",
-  "DELIVERED",
+  "PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED",
 ] as const
 
 type OrderStatus = (typeof STATUS_FLOW)[number]
@@ -22,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const { id } = await params
-  const order = await prisma.serviceOrder.findUnique({ where: { id } })
+  const order = await prisma.order.findUnique({ where: { id } })
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const currentIndex = STATUS_FLOW.indexOf(order.status as OrderStatus)
@@ -32,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const nextStatus = STATUS_FLOW[currentIndex + 1]
 
-  const updated = await prisma.serviceOrder.update({
+  const updated = await prisma.order.update({
     where: { id },
     data: {
       status: nextStatus,
@@ -53,11 +46,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const { status, note } = await req.json()
-  if (!STATUS_FLOW.includes(status)) {
+  const allStatuses = [...STATUS_FLOW, "CANCELLED", "REFUNDED"]
+  if (!allStatuses.includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 })
   }
 
-  const updated = await prisma.serviceOrder.update({
+  const updated = await prisma.order.update({
     where: { id },
     data: {
       status,

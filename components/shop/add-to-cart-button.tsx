@@ -19,7 +19,7 @@ export default function AddToCartButton({ product }: Props) {
 
   return (
     <button
-      onClick={() => add(product)}
+      onClick={() => add({ ...product, productId: product.id })}
       className={`w-full py-4 rounded-xl font-semibold text-base transition-all ${
         inCart
           ? "bg-primary/15 text-primary border border-primary/40"

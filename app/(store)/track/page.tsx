@@ -3,29 +3,30 @@ import { prisma } from "@/lib/prisma"
 
 export const metadata = { title: "Track Your Order — Allio Cosmetics" }
 
-const STATUS_STEPS = [
-  { key: "PENDING",        label: "Order Placed" },
-  { key: "CONFIRMED",      label: "Confirmed" },
-  { key: "RECEIVED",       label: "Bottle Received" },
-  { key: "ASSESSING",      label: "Assessment" },
-  { key: "RECONDITIONING", label: "Reconditioning" },
-  { key: "QUALITY_CHECK",  label: "Quality Check" },
-  { key: "READY",          label: "Ready" },
-  { key: "DELIVERED",      label: "Delivered" },
+const DELIVERY_STEPS = [
+  { key: "PENDING",    label: "Order Placed",       sub: "We've received your order" },
+  { key: "CONFIRMED",  label: "Payment Confirmed",  sub: "Your payment was successful" },
+  { key: "PROCESSING", label: "Being Prepared",     sub: "Your order is being packed" },
+  { key: "SHIPPED",    label: "Out for Delivery",   sub: "On its way to you" },
+  { key: "DELIVERED",  label: "Delivered",          sub: "Your order has arrived" },
 ]
 
-// Status badge colours — kept intentional since they convey distinct states
+const PICKUP_STEPS = [
+  { key: "PENDING",    label: "Order Placed",       sub: "We've received your order" },
+  { key: "CONFIRMED",  label: "Payment Confirmed",  sub: "Your payment was successful" },
+  { key: "PROCESSING", label: "Being Prepared",     sub: "Your order is being packed" },
+  { key: "SHIPPED",    label: "Ready for Pickup",   sub: "Come collect your order" },
+  { key: "DELIVERED",  label: "Picked Up",          sub: "Order collected — enjoy!" },
+]
+
 const STATUS_BADGE: Record<string, string> = {
-  PENDING:        "bg-muted text-muted-foreground",
-  CONFIRMED:      "bg-primary/15 text-primary",
-  RECEIVED:       "bg-primary/15 text-primary",
-  ASSESSING:      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  RECONDITIONING: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  QUALITY_CHECK:  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  READY:          "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  DELIVERED:      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  CANCELLED:      "bg-destructive/10 text-destructive",
-  REFUNDED:       "bg-destructive/10 text-destructive",
+  PENDING:    "bg-muted text-muted-foreground",
+  CONFIRMED:  "bg-primary/15 text-primary",
+  PROCESSING: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  SHIPPED:    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  DELIVERED:  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  CANCELLED:  "bg-destructive/10 text-destructive",
+  REFUNDED:   "bg-destructive/10 text-destructive",
 }
 
 type Props = { searchParams: Promise<{ order?: string }> }
@@ -34,15 +35,32 @@ export default async function TrackPage({ searchParams }: Props) {
   const { order: orderNumber } = await searchParams
 
   const order = orderNumber
-    ? await prisma.serviceOrder.findUnique({
-        where:   { orderNumber },
-        include: {
-          items:         { include: { service: true } },
-          statusHistory: { orderBy: { createdAt: "asc" } },
+    ? await prisma.order.findUnique({
+        where:  { orderNumber },
+        select: {
+          orderNumber:      true,
+          status:           true,
+          deliveryMethod:   true,
+          shippingName:     true,
+          shippingLine1:    true,
+          shippingLine2:    true,
+          shippingCity:     true,
+          shippingPostcode: true,
+          shippingCountry:  true,
+          estimatedDelivery: true,
+          items: {
+            select: {
+              id: true, quantity: true, total: true, sizeLabel: true,
+              product: { select: { name: true } },
+            },
+          },
+          statusHistory: { orderBy: { createdAt: "asc" }, select: { status: true, createdAt: true, note: true } },
         },
       })
     : null
 
+  const isPickup       = order?.deliveryMethod === "PICKUP"
+  const STATUS_STEPS   = isPickup ? PICKUP_STEPS : DELIVERY_STEPS
   const activeStepIndex = order
     ? STATUS_STEPS.findIndex((s) => s.key === order.status)
     : -1
@@ -55,7 +73,7 @@ export default async function TrackPage({ searchParams }: Props) {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h1 className="text-3xl font-bold text-foreground mb-2">Track Your Order</h1>
         <p className="text-muted-foreground mb-10">
-          Enter your order number to see the latest status of your bottle.
+          Enter your order number to see the latest delivery status.
         </p>
 
         <form method="GET" action="/track" className="flex gap-3 mb-12">
@@ -99,11 +117,11 @@ export default async function TrackPage({ searchParams }: Props) {
             {/* Order items */}
             {order.items.length > 0 && (
               <div className="mb-6 pb-6 border-b border-border space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Services</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Items</p>
                 {order.items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
-                      {item.service.name} ×{item.quantity}
+                      {item.product.name}{item.sizeLabel ? ` — ${item.sizeLabel}` : ""} ×{item.quantity}
                     </span>
                     <span className="font-medium text-foreground">
                       CA${(item.total / 100).toFixed(2)}
@@ -112,6 +130,53 @@ export default async function TrackPage({ searchParams }: Props) {
                 ))}
               </div>
             )}
+
+            {/* Delivery method info */}
+            <div className="mb-6 pb-6 border-b border-border">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Delivery</p>
+              {isPickup ? (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">In-store pickup</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {order.status === "SHIPPED"
+                        ? "Your order is ready — bring your order number and a valid ID."
+                        : "We'll notify you when your order is ready for collection."}
+                    </p>
+                  </div>
+                </div>
+              ) : order.shippingLine1 ? (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{order.shippingName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {order.shippingLine1}{order.shippingLine2 ? `, ${order.shippingLine2}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {order.shippingCity}{order.shippingPostcode ? `, ${order.shippingPostcode}` : ""} · {order.shippingCountry}
+                    </p>
+                    {order.estimatedDelivery && (
+                      <p className="text-xs text-primary font-medium mt-1">
+                        Est. delivery: {new Date(order.estimatedDelivery).toLocaleDateString("en-CA", { day: "numeric", month: "long" })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             {isCancelled ? (
               <div className="text-center py-6">
@@ -124,7 +189,6 @@ export default async function TrackPage({ searchParams }: Props) {
                 </p>
               </div>
             ) : (
-              /* Progress Timeline */
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-4">Progress</p>
                 <div className="space-y-0">
@@ -143,7 +207,11 @@ export default async function TrackPage({ searchParams }: Props) {
                                 : "bg-muted text-muted-foreground"
                             }`}
                           >
-                            {isComplete ? "✓" : i + 1}
+                            {isComplete ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : i + 1}
                           </div>
                           {i < STATUS_STEPS.length - 1 && (
                             <div className={`w-0.5 h-8 transition-colors ${isComplete ? "bg-primary" : "bg-border"}`} />
@@ -151,15 +219,15 @@ export default async function TrackPage({ searchParams }: Props) {
                         </div>
                         <div className="pb-8">
                           <p className={`font-medium text-sm transition-colors ${
-                            isActive    ? "text-primary"
+                            isActive     ? "text-primary"
                             : isComplete ? "text-foreground"
                             : "text-muted-foreground"
                           }`}>
                             {step.label}
                           </p>
-                          {isActive && (
-                            <p className="text-xs text-muted-foreground mt-0.5">Currently in progress</p>
-                          )}
+                          <p className={`text-xs mt-0.5 ${isActive ? "text-primary/70" : "text-muted-foreground/60"}`}>
+                            {isActive ? step.sub : isComplete ? step.sub : ""}
+                          </p>
                         </div>
                       </div>
                     )

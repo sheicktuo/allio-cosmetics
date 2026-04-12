@@ -1,6 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/require-admin"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
@@ -18,6 +19,8 @@ export async function createPromoCode(
   _: unknown,
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean }> {
+  try { await requireAdmin() } catch { return { error: "Unauthorized" } }
+
   const parsed = createSchema.safeParse({
     code:          formData.get("code"),
     description:   formData.get("description") || undefined,
@@ -51,6 +54,7 @@ export async function createPromoCode(
 }
 
 export async function togglePromoCode(formData: FormData) {
+  await requireAdmin()
   const id    = formData.get("id") as string
   const value = formData.get("value") === "true"
   await prisma.promoCode.update({ where: { id }, data: { isActive: value } })
@@ -58,6 +62,7 @@ export async function togglePromoCode(formData: FormData) {
 }
 
 export async function deletePromoCode(formData: FormData) {
+  await requireAdmin()
   const id = formData.get("id") as string
   await prisma.promoCode.delete({ where: { id } })
   revalidatePath("/admin/promo-codes")

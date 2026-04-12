@@ -3,29 +3,31 @@
 import { useActionState, useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
-import { createService, updateService } from "./actions"
+import { createProduct, updateProduct } from "./actions"
 import ImageUploader from "@/components/admin/image-uploader"
 
 type Category = { id: string; name: string }
 
-type Service = {
-  id:             string
-  name:           string
-  slug:           string
-  categoryId:     string
-  price:          number
-  turnaroundDays: number
-  description:    string | null
-  imageUrl:       string | null
-  isActive:       boolean
-  isFeatured:     boolean
+type ProductSize = { id?: string; label: string; price: number }
+
+type Product = {
+  id:          string
+  name:        string
+  slug:        string
+  categoryId:  string
+  price:       number
+  description: string | null
+  imageUrl:    string | null
+  isActive:    boolean
+  isFeatured:  boolean
+  sizes:       ProductSize[]
 }
 
 type Props = {
   open:       boolean
   onClose:    () => void
   categories: Category[]
-  editing:    Service | null
+  editing:    Product | null
 }
 
 function slugify(s: string) {
@@ -37,16 +39,17 @@ const labelCls = "block text-xs font-medium text-muted-foreground uppercase trac
 
 export default function ProductPanel({ open, onClose, categories, editing }: Props) {
   const isEdit = !!editing
-  const action = isEdit ? updateService : createService
+  const action = isEdit ? updateProduct : createProduct
 
   const [state, formAction, pending] = useActionState(action, undefined)
-  // Initialized from props — component is remounted by shop-manager when open/editing changes
   const [slugTouched, setSlugTouched] = useState(false)
-  const [nameValue,   setNameValue]   = useState(editing?.name  ?? "")
-  const [manualSlug,  setManualSlug]  = useState(editing?.slug  ?? "")
+  const [nameValue,   setNameValue]   = useState(editing?.name     ?? "")
+  const [manualSlug,  setManualSlug]  = useState(editing?.slug     ?? "")
   const [imageUrl,    setImageUrl]    = useState(editing?.imageUrl ?? "")
+  const [sizes, setSizes] = useState<{ label: string; price: string }[]>(
+    editing?.sizes.map((s) => ({ label: s.label, price: (s.price / 100).toFixed(2) })) ?? []
+  )
 
-  // Derived inline — no effect needed for derived state
   const slugValue = slugTouched ? manualSlug : (nameValue ? slugify(nameValue) : manualSlug)
 
   useEffect(() => {
@@ -57,6 +60,18 @@ export default function ProductPanel({ open, onClose, categories, editing }: Pro
       onClose()
     }
   }, [state, isEdit, onClose])
+
+  function addSize() {
+    setSizes((prev) => [...prev, { label: "", price: "" }])
+  }
+
+  function removeSize(i: number) {
+    setSizes((prev) => prev.filter((_, idx) => idx !== i))
+  }
+
+  function updateSize(i: number, field: "label" | "price", value: string) {
+    setSizes((prev) => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s))
+  }
 
   if (!open) return null
 
@@ -82,6 +97,8 @@ export default function ProductPanel({ open, onClose, categories, editing }: Pro
         {/* Form */}
         <form id="product-form" action={formAction} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {isEdit && <input type="hidden" name="id" value={editing.id} />}
+          {/* Sizes serialized as JSON */}
+          <input type="hidden" name="sizesJson" value={JSON.stringify(sizes)} />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -91,7 +108,7 @@ export default function ProductPanel({ open, onClose, categories, editing }: Pro
                 required
                 value={nameValue}
                 onChange={(e) => setNameValue(e.target.value)}
-                placeholder="Full Reconditioning Kit"
+                placeholder="Versace Eros — Eau de Parfum"
                 className={inputCls}
               />
             </div>
@@ -103,7 +120,7 @@ export default function ProductPanel({ open, onClose, categories, editing }: Pro
                 required
                 value={slugValue}
                 onChange={(e) => { setSlugTouched(true); setManualSlug(e.target.value) }}
-                placeholder="full-reconditioning-kit"
+                placeholder="versace-eros-eau-de-parfum"
                 className={`${inputCls} font-mono`}
               />
               <p className="text-[11px] text-muted-foreground mt-1">URL identifier. Auto-generated from name. Lowercase, hyphens only.</p>
@@ -124,31 +141,18 @@ export default function ProductPanel({ open, onClose, categories, editing }: Pro
               </select>
             </div>
 
-            <div>
-              <label className={labelCls}>Price (CA$) *</label>
+            <div className="col-span-2">
+              <label className={labelCls}>Base Price (CA$)</label>
               <input
                 name="price"
                 type="number"
-                required
-                min={0.01}
+                min={0}
                 step={0.01}
-                defaultValue={editing ? (editing.price / 100).toFixed(2) : ""}
-                placeholder="49.00"
+                defaultValue={editing ? (editing.price / 100).toFixed(2) : "0.00"}
+                placeholder="0.00"
                 className={inputCls}
               />
-            </div>
-
-            <div>
-              <label className={labelCls}>Turnaround (days) *</label>
-              <input
-                name="turnaroundDays"
-                type="number"
-                required
-                min={1}
-                step={1}
-                defaultValue={editing?.turnaroundDays ?? 5}
-                className={inputCls}
-              />
+              <p className="text-[11px] text-muted-foreground mt-1">Used as fallback when no sizes are defined.</p>
             </div>
 
             <div className="col-span-2">
@@ -167,18 +171,81 @@ export default function ProductPanel({ open, onClose, categories, editing }: Pro
                 name="description"
                 rows={3}
                 defaultValue={editing?.description ?? ""}
-                placeholder="Describe what this service includes…"
+                placeholder="Describe this product…"
                 className={`${inputCls} resize-none`}
               />
             </div>
+          </div>
+
+          {/* ── Sizes ──────────────────────────────────────────────── */}
+          <div className="border border-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sizes & Prices</p>
+                <p className="text-[11px] text-muted-foreground/70 mt-0.5">e.g. 10ml, 50ml, 100ml, 200ml</p>
+              </div>
+              <button
+                type="button"
+                onClick={addSize}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:opacity-75 transition-opacity"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Size
+              </button>
+            </div>
+
+            {sizes.length === 0 ? (
+              <p className="text-xs text-muted-foreground/60 text-center py-2">
+                No sizes — base price will be used.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-1">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Label</span>
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Price (CA$)</span>
+                  <span />
+                </div>
+                {sizes.map((size, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                    <input
+                      type="text"
+                      value={size.label}
+                      onChange={(e) => updateSize(i, "label", e.target.value)}
+                      placeholder="50ml"
+                      className={inputCls}
+                    />
+                    <input
+                      type="number"
+                      value={size.price}
+                      onChange={(e) => updateSize(i, "price", e.target.value)}
+                      min={0}
+                      step={0.01}
+                      placeholder="49.00"
+                      className={inputCls}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSize(i)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Flags */}
           <div className="border border-border rounded-xl p-4 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Visibility</p>
             {[
-              { name: "isActive",   label: "Active",   sub: "Visible and available for purchase", defaultChecked: editing?.isActive  ?? true  },
-              { name: "isFeatured", label: "Featured", sub: "Shown in featured sections on the storefront", defaultChecked: editing?.isFeatured ?? false },
+              { name: "isActive",   label: "Active",   sub: "Visible and available for purchase",           defaultChecked: editing?.isActive  ?? true  },
+              { name: "isFeatured", label: "Featured", sub: "Shown in featured sections on the storefront",  defaultChecked: editing?.isFeatured ?? false },
             ].map((opt) => (
               <label key={opt.name} className="flex items-start gap-3 cursor-pointer">
                 <input
@@ -194,7 +261,6 @@ export default function ProductPanel({ open, onClose, categories, editing }: Pro
                 </div>
               </label>
             ))}
-            {/* Ensure unchecked sends false */}
             <input type="hidden" name="isActive"   value="false" />
             <input type="hidden" name="isFeatured" value="false" />
           </div>

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import Header from "@/components/layout/header"
+import Footer from "@/components/layout/footer"
 import { Button } from "@/components/ui/button"
 
 export const metadata = {
@@ -232,16 +233,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-foreground text-background py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm opacity-60">
-          <p>&copy; 2026 Allio Cosmetics. All rights reserved.</p>
-          <div className="flex gap-6">
-            <Link href="/privacy" className="hover:opacity-100 transition-opacity">Privacy Policy</Link>
-            <Link href="/terms" className="hover:opacity-100 transition-opacity">Terms of Service</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

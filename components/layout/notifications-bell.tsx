@@ -15,14 +15,11 @@ type Notif = {
 }
 
 const STATUS_MESSAGES: Record<string, string> = {
-  CONFIRMED:      "Your order has been confirmed!",
-  RECEIVED:       "We've received your bottle",
-  ASSESSING:      "Fragrance assessment in progress",
-  RECONDITIONING: "Reconditioning has started",
-  QUALITY_CHECK:  "Final quality check underway",
-  READY:          "Your bottle is ready!",
-  DELIVERED:      "Your bottle has been returned — enjoy!",
-  CANCELLED:      "Your order was cancelled",
+  CONFIRMED:  "Your order has been confirmed!",
+  PROCESSING: "Your order is being prepared",
+  SHIPPED:    "Your order is on its way!",
+  DELIVERED:  "Your order has been delivered — enjoy!",
+  CANCELLED:  "Your order was cancelled",
 }
 
 export default function NotificationsBell() {

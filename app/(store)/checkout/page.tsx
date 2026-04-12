@@ -15,14 +15,9 @@ function formatPrice(p: number) {
 // 0:Contact  1:Order  2:Delivery  3:Review  4:Payment
 const STEPS = ["Contact", "Order", "Delivery", "Review", "Payment"]
 
-const ORDER_TYPES = [
-  { value: "DROPOFF", label: "Drop Off",        description: "Bring your bottle to our studio in person.",  emoji: "🏪" },
-  { value: "PICKUP",  label: "Pick up",      description: "We pick up from your address (London only).", emoji: "🚗" },
-]
-
-const CONDITIONS = ["Excellent", "Good", "Fair", "Poor — needs assessment"]
-
 const inputCls = "w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors text-sm"
+
+type DeliveryMethod = "DELIVERY" | "PICKUP"
 
 export default function CheckoutPage() {
   const { items, total, clear } = useCart()
@@ -37,9 +32,9 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [orderNumber,  setOrderNumber]  = useState<string | null>(null)
   const [paidAmount,   setPaidAmount]   = useState(0)
+  const [paymentEmail, setPaymentEmail] = useState("")
 
-  // Form state
-  // Contact: track only explicit user edits; fall back to session data during render
+  // Contact — fall back to session data, track only explicit edits
   const [contactEdits, setContactEdits] = useState<Partial<{ name: string; email: string; phone: string }>>({})
   const contact = {
     name:  contactEdits.name  ?? session?.user?.name  ?? "",
@@ -50,8 +45,20 @@ export default function CheckoutPage() {
     setContactEdits((prev) => ({ ...prev, [field]: value }))
   }
 
-  const [bottle,   setBottle]   = useState({ brand: "", fragrance: "", bottleSize: "", condition: "" })
-  const [delivery, setDelivery] = useState({ orderType: "MAIL_IN", notes: "", promoCode: "" })
+  // Delivery method
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("DELIVERY")
+
+  // Shipping address
+  const [delivery, setDelivery] = useState({
+    shippingName:     "",
+    shippingLine1:    "",
+    shippingLine2:    "",
+    shippingCity:     "",
+    shippingPostcode: "",
+    shippingCountry:  "CA",
+    promoCode:        "",
+    notes:            "",
+  })
 
   if (items.length === 0) {
     return (
@@ -60,7 +67,7 @@ export default function CheckoutPage() {
         <div className="max-w-lg mx-auto px-4 py-24 text-center">
           <p className="text-6xl mb-4">🛒</p>
           <h1 className="text-2xl font-heading font-bold text-foreground mb-2">Your cart is empty</h1>
-          <p className="text-muted-foreground mb-8">Add a service before checking out.</p>
+          <p className="text-muted-foreground mb-8">Add a product before checking out.</p>
           <Link href="/shop" className="inline-block bg-primary text-primary-foreground font-semibold px-8 py-3.5 rounded-xl hover:opacity-90 transition-opacity">
             Shop Now
           </Link>
@@ -71,8 +78,16 @@ export default function CheckoutPage() {
 
   function canAdvance() {
     if (step === 0) return contact.name.trim() !== "" && contact.email.includes("@")
-    if (step === 1) return bottle.brand.trim() !== "" && bottle.fragrance.trim() !== ""
-    if (step === 2) return !!delivery.orderType
+    if (step === 1) return true
+    if (step === 2) {
+      if (deliveryMethod === "PICKUP") return true
+      return (
+        delivery.shippingName.trim() !== "" &&
+        delivery.shippingLine1.trim() !== "" &&
+        delivery.shippingCity.trim() !== "" &&
+        delivery.shippingPostcode.trim() !== ""
+      )
+    }
     return true
   }
 
@@ -81,18 +96,31 @@ export default function CheckoutPage() {
     setError(null)
 
     const fd = new FormData()
-    fd.set("name",        contact.name)
-    fd.set("email",       contact.email)
-    fd.set("phone",       contact.phone)
-    fd.set("brand",       bottle.brand)
-    fd.set("fragrance",   bottle.fragrance)
-    fd.set("bottleSize",  bottle.bottleSize)
-    fd.set("condition",   bottle.condition)
-    fd.set("orderType",   delivery.orderType)
-    fd.set("notes",       delivery.notes)
-    fd.set("promoCode",   delivery.promoCode)
+    fd.set("name",           contact.name)
+    fd.set("email",          contact.email)
+    fd.set("phone",          contact.phone)
+    fd.set("deliveryMethod", deliveryMethod)
+    fd.set("notes",          delivery.notes)
+    fd.set("promoCode",      delivery.promoCode)
+
+    if (deliveryMethod === "DELIVERY") {
+      fd.set("shippingName",     delivery.shippingName)
+      fd.set("shippingLine1",    delivery.shippingLine1)
+      fd.set("shippingLine2",    delivery.shippingLine2)
+      fd.set("shippingCity",     delivery.shippingCity)
+      fd.set("shippingPostcode", delivery.shippingPostcode)
+      fd.set("shippingCountry",  delivery.shippingCountry)
+    }
+
     fd.set("cartJson", JSON.stringify(items.map((i) => ({
-      id: i.id, slug: i.slug, name: i.name, price: i.price, quantity: i.quantity,
+      id:        i.id,
+      productId: i.productId,
+      slug:      i.slug,
+      name:      i.name,
+      price:     i.price,
+      quantity:  i.quantity,
+      sizeId:    i.sizeId,
+      sizeLabel: i.sizeLabel,
     }))))
 
     const res = await createOrderAndPaymentIntent(fd)
@@ -106,7 +134,7 @@ export default function CheckoutPage() {
     setClientSecret(res.clientSecret)
     setOrderNumber(res.orderNumber)
     setPaidAmount(res.amount)
-    clear()
+    setPaymentEmail(contact.email)
     setStep(4)
     setLoading(false)
   }
@@ -178,9 +206,9 @@ export default function CheckoutPage() {
                     <input type="email" value={contact.email} onChange={(e) => setContact("email", e.target.value)}
                       placeholder="jane@example.com" className={inputCls} />
                   </Field>
-                  <Field label="Phone" hint="Optional — for dispatch updates">
+                  <Field label="Phone" hint="Optional">
                     <input type="tel" value={contact.phone} onChange={(e) => setContact("phone", e.target.value)}
-                      placeholder="+44 7700 900000" className={inputCls} />
+                      placeholder="+1 555 000 0000" className={inputCls} />
                   </Field>
                 </div>
               )}
@@ -190,13 +218,12 @@ export default function CheckoutPage() {
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-xl font-heading font-bold text-foreground mb-1">Your Order</h2>
-                    <p className="text-sm text-muted-foreground">Review the services you selected and tell us about your bottle.</p>
+                    <p className="text-sm text-muted-foreground">Review the items in your cart.</p>
                   </div>
 
-                  {/* Cart items */}
                   <div className="rounded-xl border border-border overflow-hidden">
                     <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Services</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Items</p>
                       <Link href="/cart" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -223,36 +250,6 @@ export default function CheckoutPage() {
                       <span>{formatPrice(subtotal)}</span>
                     </div>
                   </div>
-
-                  {/* Bottle details */}
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-3">Your Bottle</p>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <Field label="Brand" required>
-                          <input value={bottle.brand} onChange={(e) => setBottle({ ...bottle, brand: e.target.value })}
-                            placeholder="e.g. Chanel, Dior" className={inputCls} />
-                        </Field>
-                        <Field label="Fragrance" required>
-                          <input value={bottle.fragrance} onChange={(e) => setBottle({ ...bottle, fragrance: e.target.value })}
-                            placeholder="e.g. Bleu de Chanel" className={inputCls} />
-                        </Field>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <Field label="Bottle size" hint="Optional">
-                          <input value={bottle.bottleSize} onChange={(e) => setBottle({ ...bottle, bottleSize: e.target.value })}
-                            placeholder="e.g. 100ml" className={inputCls} />
-                        </Field>
-                        <Field label="Current condition">
-                          <select value={bottle.condition} onChange={(e) => setBottle({ ...bottle, condition: e.target.value })}
-                            className={inputCls}>
-                            <option value="">Select condition</option>
-                            {CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                        </Field>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
 
@@ -261,40 +258,127 @@ export default function CheckoutPage() {
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-xl font-heading font-bold text-foreground mb-1">Delivery</h2>
-                    <p className="text-sm text-muted-foreground">How would you like to get your bottle to us?</p>
+                    <p className="text-sm text-muted-foreground">How would you like to receive your order?</p>
                   </div>
-                  <div className="space-y-3">
-                    {ORDER_TYPES.map((t) => (
-                      <button key={t.value} type="button"
-                        onClick={() => setDelivery({ ...delivery, orderType: t.value })}
-                        className={`w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
-                          delivery.orderType === t.value
-                            ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                            : "border-border hover:border-primary/40 hover:bg-muted/50"
+
+                  {/* Delivery method toggle */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {(["DELIVERY", "PICKUP"] as const).map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => setDeliveryMethod(method)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                          deliveryMethod === method
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                         }`}
                       >
-                        <span className="text-3xl shrink-0">{t.emoji}</span>
-                        <div>
-                          <p className="font-semibold text-foreground text-sm">{t.label}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
-                        </div>
-                        <div className={`ml-auto w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
-                          delivery.orderType === t.value ? "border-primary bg-primary" : "border-border"
-                        }`} />
+                        {method === "DELIVERY" ? (
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                          </svg>
+                        ) : (
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                        )}
+                        <span className="text-sm font-semibold">
+                          {method === "DELIVERY" ? "Ship to me" : "Pick up in store"}
+                        </span>
+                        <span className={`text-xs ${deliveryMethod === method ? "text-primary/70" : "text-muted-foreground"}`}>
+                          {method === "DELIVERY" ? "Delivered to your address" : "Collect at our location"}
+                        </span>
                       </button>
                     ))}
                   </div>
-                  <Field label="Promo code" hint="Optional">
-                    <input value={delivery.promoCode}
-                      onChange={(e) => setDelivery({ ...delivery, promoCode: e.target.value.toUpperCase() })}
-                      placeholder="WELCOME10" className={`${inputCls} uppercase`} />
-                  </Field>
-                  <Field label="Notes for our team" hint="Optional">
-                    <textarea value={delivery.notes}
-                      onChange={(e) => setDelivery({ ...delivery, notes: e.target.value })}
-                      rows={3} placeholder="Anything we should know about your bottle…"
-                      className={`${inputCls} resize-none`} />
-                  </Field>
+
+                  {/* Delivery: shipping address form */}
+                  {deliveryMethod === "DELIVERY" && (
+                    <div className="space-y-4 pt-2">
+                      <Field label="Full Name" required>
+                        <input value={delivery.shippingName}
+                          onChange={(e) => setDelivery({ ...delivery, shippingName: e.target.value })}
+                          placeholder="Jane Smith" className={inputCls} />
+                      </Field>
+                      <Field label="Address line 1" required>
+                        <input value={delivery.shippingLine1}
+                          onChange={(e) => setDelivery({ ...delivery, shippingLine1: e.target.value })}
+                          placeholder="123 Main Street" className={inputCls} />
+                      </Field>
+                      <Field label="Address line 2" hint="Optional">
+                        <input value={delivery.shippingLine2}
+                          onChange={(e) => setDelivery({ ...delivery, shippingLine2: e.target.value })}
+                          placeholder="Apartment, suite, unit…" className={inputCls} />
+                      </Field>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="City" required>
+                          <input value={delivery.shippingCity}
+                            onChange={(e) => setDelivery({ ...delivery, shippingCity: e.target.value })}
+                            placeholder="Toronto" className={inputCls} />
+                        </Field>
+                        <Field label="Postcode / ZIP" required>
+                          <input value={delivery.shippingPostcode}
+                            onChange={(e) => setDelivery({ ...delivery, shippingPostcode: e.target.value })}
+                            placeholder="M5V 2T6" className={inputCls} />
+                        </Field>
+                      </div>
+                      <Field label="Country" required>
+                        <select
+                          value={delivery.shippingCountry}
+                          onChange={(e) => setDelivery({ ...delivery, shippingCountry: e.target.value })}
+                          className={`${inputCls} bg-background`}
+                        >
+                          <option value="CA">Canada</option>
+                          <option value="US">United States</option>
+                          <option value="GB">United Kingdom</option>
+                          <option value="AU">Australia</option>
+                          <option value="FR">France</option>
+                          <option value="DE">Germany</option>
+                        </select>
+                      </Field>
+                    </div>
+                  )}
+
+                  {/* Pickup: store info */}
+                  {deliveryMethod === "PICKUP" && (
+                    <div className="rounded-xl border border-border bg-muted/30 p-5 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <svg className="w-4.5 h-4.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Allio Cosmetics</p>
+                          <p className="text-sm text-muted-foreground">We&apos;ll contact you once your order is ready for pickup.</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground pl-12">
+                        Bring your order confirmation and a valid ID. Orders are held for 7 days.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Promo code & notes — always visible */}
+                  <div className="space-y-4 pt-2">
+                    <Field label="Promo code" hint="Optional">
+                      <input value={delivery.promoCode}
+                        onChange={(e) => setDelivery({ ...delivery, promoCode: e.target.value.toUpperCase() })}
+                        placeholder="WELCOME10" className={`${inputCls} uppercase`} />
+                    </Field>
+                    <Field label="Order notes" hint="Optional">
+                      <textarea value={delivery.notes}
+                        onChange={(e) => setDelivery({ ...delivery, notes: e.target.value })}
+                        rows={3} placeholder="Any special instructions…"
+                        className={`${inputCls} resize-none`} />
+                    </Field>
+                  </div>
                 </div>
               )}
 
@@ -303,26 +387,28 @@ export default function CheckoutPage() {
                 <div className="space-y-5">
                   <h2 className="text-xl font-heading font-bold text-foreground">Review your order</h2>
 
-                  {/* Contact */}
                   <Section title="Contact" onEdit={() => setStep(0)}>
                     <ReviewRow label="Name"  value={contact.name} />
                     <ReviewRow label="Email" value={contact.email} />
                     {contact.phone && <ReviewRow label="Phone" value={contact.phone} />}
                   </Section>
 
-                  {/* Order & Bottle */}
-                  <Section title="Order" onEdit={() => setStep(1)}>
+                  <Section title="Items" onEdit={() => setStep(1)}>
                     {items.map((item) => (
                       <ReviewRow key={item.id} label={item.name} value={`${formatPrice(item.price * item.quantity)} ×${item.quantity}`} />
                     ))}
-                    <ReviewRow label="Bottle" value={`${bottle.brand} — ${bottle.fragrance}`} />
-                    {bottle.bottleSize && <ReviewRow label="Size"      value={bottle.bottleSize} />}
-                    {bottle.condition  && <ReviewRow label="Condition" value={bottle.condition} />}
                   </Section>
 
-                  {/* Delivery */}
                   <Section title="Delivery" onEdit={() => setStep(2)}>
-                    <ReviewRow label="Method" value={ORDER_TYPES.find((t) => t.value === delivery.orderType)?.label ?? ""} />
+                    <ReviewRow label="Method" value={deliveryMethod === "PICKUP" ? "In-store pickup" : "Ship to address"} />
+                    {deliveryMethod === "DELIVERY" && (
+                      <>
+                        <ReviewRow label="Name"    value={delivery.shippingName} />
+                        <ReviewRow label="Address" value={[delivery.shippingLine1, delivery.shippingLine2].filter(Boolean).join(", ")} />
+                        <ReviewRow label="City"    value={`${delivery.shippingCity}, ${delivery.shippingPostcode}`} />
+                        <ReviewRow label="Country" value={delivery.shippingCountry} />
+                      </>
+                    )}
                     {delivery.promoCode && <ReviewRow label="Promo code" value={delivery.promoCode} />}
                     {delivery.notes    && <ReviewRow label="Notes"       value={delivery.notes} />}
                   </Section>
@@ -340,6 +426,7 @@ export default function CheckoutPage() {
                   clientSecret={clientSecret}
                   orderNumber={orderNumber}
                   amount={paidAmount}
+                  email={paymentEmail}
                 />
               )}
 

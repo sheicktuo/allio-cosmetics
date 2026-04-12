@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useCart } from "@/store/cart"
 
 function formatPrice(p: number) {
@@ -13,18 +13,13 @@ function formatPrice(p: number) {
 const emptySubscribe = () => () => {}
 
 export default function CartDrawer() {
-  const router   = useRouter()
-  const pathname = usePathname()
+  const router = useRouter()
   const { items, increment, decrement, remove, total, count } = useCart()
   const [open, setOpen] = useState(false)
   const [, startTransition] = useTransition()
 
   // True only on the client — avoids hydration mismatch without setState-in-effect
   const hydrated = useSyncExternalStore(emptySubscribe, () => true, () => false)
-
-  // Close drawer when navigating to cart/checkout pages
-  const shouldClose = pathname === "/cart" || pathname === "/checkout"
-  if (shouldClose && open) startTransition(() => setOpen(false))
 
   const subtotal = total()
   const itemCount = count()
@@ -99,7 +94,7 @@ export default function CartDrawer() {
                     </svg>
                   </div>
                   <p className="font-heading font-semibold text-foreground mb-1">Your cart is empty</p>
-                  <p className="text-sm text-muted-foreground mb-6">Add a service to get started</p>
+                  <p className="text-sm text-muted-foreground mb-6">Add a product to get started</p>
                   <button
                     onClick={() => { setOpen(false); router.push("/shop") }}
                     className="bg-primary text-primary-foreground text-sm font-semibold px-6 py-2.5 rounded-xl hover:opacity-90 transition-opacity"
@@ -118,7 +113,14 @@ export default function CartDrawer() {
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{item.collection}</p>
                         <p className="text-sm font-semibold text-foreground truncate">{item.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{formatPrice(item.price)} each</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {item.sizeLabel && (
+                            <span className="text-xs font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                              {item.sizeLabel}
+                            </span>
+                          )}
+                          <p className="text-xs text-muted-foreground">{formatPrice(item.price)} each</p>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
@@ -191,10 +193,10 @@ export default function CartDrawer() {
                     </svg>
                   </button>
                   <button
-                    onClick={() => { setOpen(false); router.push("/cart") }}
-                    className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+                    onClick={() => { setOpen(false); router.push("/shop") }}
+                    className="w-full text-xs text-muted-foreground hover:text-foreground underline transition-colors py-2"
                   >
-                    View full cart
+                    Continue Shopping
                   </button>
                 </div>
               </div>

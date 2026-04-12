@@ -1,5 +1,6 @@
 import Link from "next/link"
 import Header from "@/components/layout/header"
+import ClearCart from "./clear-cart"
 
 export const metadata = { title: "Order Confirmed — Allio Cosmetics" }
 
@@ -15,6 +16,7 @@ export default async function CheckoutSuccessPage({
     <div className="min-h-screen bg-background">
       <Header />
 
+      {!paymentFailed && <ClearCart />}
       <div className="max-w-lg mx-auto px-4 py-24 text-center">
         {paymentFailed ? (
           <>

@@ -5,50 +5,47 @@ import Link from "next/link"
 export const metadata = { title: "My Profile" }
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING:        "Pending",
-  CONFIRMED:      "Confirmed",
-  RECEIVED:       "Received",
-  ASSESSING:      "Assessing",
-  RECONDITIONING: "Reconditioning",
-  QUALITY_CHECK:  "Quality Check",
-  READY:          "Ready",
-  DELIVERED:      "Delivered",
-  CANCELLED:      "Cancelled",
-  REFUNDED:       "Refunded",
+  PENDING:    "Pending",
+  CONFIRMED:  "Confirmed",
+  PROCESSING: "Processing",
+  SHIPPED:    "Shipped",
+  DELIVERED:  "Delivered",
+  CANCELLED:  "Cancelled",
+  REFUNDED:   "Refunded",
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  PENDING:        "bg-muted text-muted-foreground",
-  CONFIRMED:      "bg-primary/15 text-primary",
-  RECEIVED:       "bg-primary/15 text-primary",
-  ASSESSING:      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  RECONDITIONING: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  QUALITY_CHECK:  "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  READY:          "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  DELIVERED:      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  CANCELLED:      "bg-destructive/10 text-destructive",
-  REFUNDED:       "bg-destructive/10 text-destructive",
+  PENDING:    "bg-muted text-muted-foreground",
+  CONFIRMED:  "bg-primary/15 text-primary",
+  PROCESSING: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  SHIPPED:    "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  DELIVERED:  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  CANCELLED:  "bg-destructive/10 text-destructive",
+  REFUNDED:   "bg-destructive/10 text-destructive",
 }
 
 export default async function ProfilePage() {
   const session = await auth()
-  const userId = session!.user.id
 
-  const [user, recentOrders, totalSpend] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { name: true, email: true, phone: true, createdAt: true, role: true },
-    }),
-    prisma.serviceOrder.findMany({
+  // Look up by email (always in the JWT) so the page works
+  // even if session.user.id is stale or undefined.
+  const user = await prisma.user.findUnique({
+    where: { email: session!.user.email! },
+    select: { id: true, name: true, email: true, phone: true, createdAt: true, role: true },
+  })
+
+  const userId = user?.id
+
+  const [recentOrders, totalSpend] = await Promise.all([
+    prisma.order.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 3,
       include: {
-        items: { include: { service: true }, take: 1 },
-        bottles: { take: 1 },
+        items: { include: { product: true }, take: 1 },
       },
     }),
-    prisma.serviceOrder.aggregate({
+    prisma.order.aggregate({
       where: { userId, paymentStatus: "PAID" },
       _sum: { total: true },
       _count: true,
@@ -96,12 +93,12 @@ export default async function ProfilePage() {
         </div>
         <dl className="space-y-4">
           {[
-            { label: "Full Name",     value: user?.name ?? "—" },
-            { label: "Email",         value: user?.email ?? "—" },
-            { label: "Phone",         value: user?.phone ?? "Not provided" },
+            { label: "Full Name", value: user?.name ?? "—" },
+            { label: "Email",     value: user?.email ?? "—" },
+            { label: "Phone",     value: user?.phone ?? "Not provided" },
           ].map((row) => (
             <div key={row.label} className="flex justify-between gap-4 text-sm">
-              <dt className="text-muted-foreground flex-shrink-0">{row.label}</dt>
+              <dt className="text-muted-foreground shrink-0">{row.label}</dt>
               <dd className="text-foreground font-medium text-right">{row.value}</dd>
             </div>
           ))}
@@ -122,7 +119,7 @@ export default async function ProfilePage() {
             <p className="text-4xl mb-3">✨</p>
             <p className="font-heading font-semibold text-foreground mb-1">No orders yet</p>
             <p className="text-sm text-muted-foreground mb-5">
-              Browse our services and send in your first bottle.
+              Browse our products and place your first order.
             </p>
             <Link
               href="/shop"
@@ -135,15 +132,13 @@ export default async function ProfilePage() {
           <div className="divide-y divide-border">
             {recentOrders.map((order) => (
               <div key={order.id} className="flex items-center gap-4 px-6 py-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 via-muted to-accent flex items-center justify-center flex-shrink-0 text-xl">
-                  ✨
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 via-muted to-accent flex items-center justify-center shrink-0 text-xl">
+                  🛍️
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-mono text-primary font-semibold">{order.orderNumber}</p>
                   <p className="text-sm font-medium text-foreground truncate">
-                    {order.bottles[0]
-                      ? `${order.bottles[0].brand} — ${order.bottles[0].fragrance}`
-                      : order.items[0]?.service.name ?? "Order"}
+                    {order.items[0]?.product.name ?? "Order"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(order.createdAt).toLocaleDateString("en-CA", {
@@ -151,7 +146,7 @@ export default async function ProfilePage() {
                     })}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${STATUS_COLOR[order.status] ?? "bg-muted text-muted-foreground"}`}>
                     {STATUS_LABEL[order.status] ?? order.status}
                   </span>
