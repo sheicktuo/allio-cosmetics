@@ -26,9 +26,16 @@ export default async function RequestDetailPage({
   const { id } = await params
   const request = await prisma.customRequest.findUnique({
     where:   { id },
-    include: { user: { select: { id: true, name: true, email: true } } },
+    include: {
+      user:  { select: { id: true, name: true, email: true } },
+      items: true,
+    },
   })
   if (!request) notFound()
+
+  const first       = request.items[0]
+  const summary     = first ? `${first.brand} — ${first.perfumeName}` : "Request"
+  const itemsSuffix = request.items.length > 1 ? ` + ${request.items.length - 1} more` : ""
 
   return (
     <div>
@@ -48,15 +55,18 @@ export default async function RequestDetailPage({
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-foreground leading-tight">{request.subject}</h1>
+          <h1 className="text-2xl font-bold text-foreground leading-tight">
+            {summary}{itemsSuffix}
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Submitted{" "}
             {new Date(request.createdAt).toLocaleDateString("en-CA", {
               month: "long", day: "numeric", year: "numeric",
             })}
-            {request.productType && (
-              <> &middot; <span className="text-foreground">{request.productType}</span></>
-            )}
+            {" · "}
+            <span className="text-foreground">
+              {request.items.length} {request.items.length === 1 ? "perfume" : "perfumes"}
+            </span>
           </p>
         </div>
         <span className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 ${STATUS_BADGE[request.status]}`}>
@@ -69,32 +79,46 @@ export default async function RequestDetailPage({
         {/* ── Left: details ─────────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-5">
 
-          {/* Request details */}
-          <div className="bg-card rounded-xl border border-border p-6">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-5">
-              Request Details
-            </p>
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Description</p>
-                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                  {request.description}
-                </p>
-              </div>
-              {request.inspiration && (
-                <div className="pt-4 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-1.5">Inspiration / References</p>
-                  <p className="text-sm text-foreground">{request.inspiration}</p>
-                </div>
-              )}
-              {request.budget && (
-                <div className="pt-4 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-1.5">Budget Range</p>
-                  <p className="text-sm font-semibold text-foreground">{request.budget}</p>
-                </div>
-              )}
+          {/* Perfumes requested */}
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b border-border">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Perfumes Requested
+              </p>
             </div>
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide bg-muted/30">
+                  <th className="px-6 py-2.5">Brand</th>
+                  <th className="px-3 py-2.5">Name</th>
+                  <th className="px-3 py-2.5">Type</th>
+                  <th className="px-6 py-2.5">Size</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {request.items.map((it) => (
+                  <tr key={it.id}>
+                    <td className="px-6 py-3 text-sm font-medium text-foreground">{it.brand}</td>
+                    <td className="px-3 py-3 text-sm text-foreground">{it.perfumeName}</td>
+                    <td className="px-3 py-3 text-sm text-muted-foreground">{it.concentration ?? "—"}</td>
+                    <td className="px-6 py-3 text-sm text-muted-foreground">{it.size ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+
+          {/* Notes */}
+          {request.notes && (
+            <div className="bg-card rounded-xl border border-border p-6">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Customer Notes
+              </p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {request.notes}
+              </p>
+            </div>
+          )}
 
           {/* Customer info */}
           <div className="bg-card rounded-xl border border-border p-6">
@@ -145,7 +169,7 @@ export default async function RequestDetailPage({
             adminNotes={request.adminNotes ?? ""}
             customerEmail={request.email}
             customerName={request.name}
-            subject={request.subject}
+            subject={summary}
           />
         </div>
 

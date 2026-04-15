@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import Link         from "next/link"
 
 export const dynamic  = "force-dynamic"
-export const metadata = { title: "Custom Requests — Admin" }
+export const metadata = { title: "Perfume Requests — Admin" }
 
 const STATUS_BADGE: Record<string, string> = {
   NEW:       "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -41,6 +41,7 @@ export default async function AdminRequestsPage({
       orderBy: { createdAt: "desc" },
       skip:    (page - 1) * PER,
       take:    PER,
+      include: { items: true },
     }),
     prisma.customRequest.count({ where }),
     prisma.customRequest.groupBy({ by: ["status"], _count: { id: true } }),
@@ -58,7 +59,7 @@ export default async function AdminRequestsPage({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2.5">
-            Custom Requests
+            Perfume Requests
             {newCount > 0 && (
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                 {newCount} new
@@ -103,9 +104,8 @@ export default async function AdminRequestsPage({
           <thead>
             <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide bg-muted/50">
               <th className="px-5 py-3">Customer</th>
-              <th className="px-5 py-3">Request</th>
-              <th className="px-5 py-3">Category</th>
-              <th className="px-5 py-3">Budget</th>
+              <th className="px-5 py-3">Perfumes</th>
+              <th className="px-5 py-3">Items</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3">Date</th>
             </tr>
@@ -113,50 +113,56 @@ export default async function AdminRequestsPage({
           <tbody className="divide-y divide-border">
             {requests.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-14 text-center text-muted-foreground text-sm">
+                <td colSpan={5} className="px-5 py-14 text-center text-muted-foreground text-sm">
                   No requests yet
                 </td>
               </tr>
             )}
-            {requests.map((r) => (
-              <tr key={r.id} className="hover:bg-muted/30 transition-colors">
+            {requests.map((r) => {
+              const first   = r.items[0]
+              const summary = first
+                ? `${first.brand} — ${first.perfumeName}`
+                : "—"
+              const extra = r.items.length > 1 ? ` + ${r.items.length - 1} more` : ""
 
-                <td className="px-5 py-3.5">
-                  <p className="text-sm font-medium text-foreground">{r.name}</p>
-                  <p className="text-xs text-muted-foreground">{r.email}</p>
-                </td>
+              return (
+                <tr key={r.id} className="hover:bg-muted/30 transition-colors">
 
-                <td className="px-5 py-3.5 max-w-[240px]">
-                  <Link
-                    href={`/admin/requests/${r.id}`}
-                    className="text-sm font-medium text-foreground hover:text-primary transition-colors line-clamp-1"
-                  >
-                    {r.subject}
-                  </Link>
-                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{r.description}</p>
-                </td>
+                  <td className="px-5 py-3.5">
+                    <p className="text-sm font-medium text-foreground">{r.name}</p>
+                    <p className="text-xs text-muted-foreground">{r.email}</p>
+                  </td>
 
-                <td className="px-5 py-3.5 text-sm text-muted-foreground">
-                  {r.productType ?? <span className="text-muted-foreground/50">—</span>}
-                </td>
+                  <td className="px-5 py-3.5 max-w-[280px]">
+                    <Link
+                      href={`/admin/requests/${r.id}`}
+                      className="text-sm font-medium text-foreground hover:text-primary transition-colors line-clamp-1"
+                    >
+                      {summary}{extra}
+                    </Link>
+                    {r.notes && (
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{r.notes}</p>
+                    )}
+                  </td>
 
-                <td className="px-5 py-3.5 text-sm text-muted-foreground">
-                  {r.budget ?? <span className="text-muted-foreground/50">—</span>}
-                </td>
+                  <td className="px-5 py-3.5 text-sm text-muted-foreground tabular-nums">
+                    {r.items.length}
+                  </td>
 
-                <td className="px-5 py-3.5">
-                  <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold ${STATUS_BADGE[r.status]}`}>
-                    {r.status.charAt(0) + r.status.slice(1).toLowerCase()}
-                  </span>
-                </td>
+                  <td className="px-5 py-3.5">
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold ${STATUS_BADGE[r.status]}`}>
+                      {r.status.charAt(0) + r.status.slice(1).toLowerCase()}
+                    </span>
+                  </td>
 
-                <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(r.createdAt).toLocaleDateString("en-CA", {
-                    month: "short", day: "numeric", year: "numeric",
-                  })}
-                </td>
-              </tr>
-            ))}
+                  <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(r.createdAt).toLocaleDateString("en-CA", {
+                      month: "short", day: "numeric", year: "numeric",
+                    })}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
 

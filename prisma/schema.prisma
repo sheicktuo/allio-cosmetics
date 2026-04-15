@@ -316,22 +316,32 @@ model PromoCode {
 // ─── Custom Requests ───────────────────────────────────────────────────────
 
 model CustomRequest {
-  id          String        @id @default(cuid())
-  userId      String?
-  name        String
-  email       String
-  phone       String?
-  productType String?
-  subject     String
-  description String
-  budget      String?
-  inspiration String?
-  status      RequestStatus @default(NEW)
-  adminNotes  String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id         String              @id @default(cuid())
+  userId     String?
+  name       String
+  email      String
+  phone      String?
+  notes      String?             // Freeform customer notes covering the whole request (batch year, gifting, etc.)
+  status     RequestStatus       @default(NEW)
+  adminNotes String?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
-  user User? @relation(fields: [userId], references: [id])
+  user  User?                @relation(fields: [userId], references: [id])
+  items CustomRequestItem[]
+}
+
+model CustomRequestItem {
+  id            String  @id @default(cuid())
+  requestId     String
+  brand         String
+  perfumeName   String
+  concentration String?  // EDP, EDT, Parfum, Oil …
+  size          String?  // 30ml, 50ml, 100ml, Other
+
+  request CustomRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
 }
 
 // ─── Notifications ─────────────────────────────────────────────────────────
