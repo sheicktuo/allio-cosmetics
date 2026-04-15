@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { updateProfile, updatePassword, addAddress, updateAddress, deleteAddress, setDefaultAddress } from "./actions"
 import PasswordInput from "@/components/ui/password-input"
+import AddressAutocomplete from "@/components/ui/address-autocomplete"
 
 type User    = { name?: string | null; email?: string | null; phone?: string | null }
 type Address = {
@@ -46,6 +47,12 @@ function AddressForm({
   onCancel: () => void
   loading: boolean
 }) {
+  // Controlled state for fields that autocomplete can populate
+  const [line1,    setLine1]    = useState(initial?.line1    ?? "")
+  const [city,     setCity]     = useState(initial?.city     ?? "")
+  const [postcode, setPostcode] = useState(initial?.postcode ?? "")
+  const [country,  setCountry]  = useState(initial?.country  ?? "CA")
+
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); onSave(new FormData(e.currentTarget)) }}
@@ -61,8 +68,23 @@ function AddressForm({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-foreground">Address line 1 <span className="text-primary text-xs">*</span></label>
-        <input name="line1" defaultValue={initial?.line1 ?? ""} required placeholder="123 Main Street" className={inputCls} />
+        <label className="text-sm font-medium text-foreground">
+          Address line 1 <span className="text-primary text-xs">*</span>
+        </label>
+        <AddressAutocomplete
+          name="line1"
+          required
+          value={line1}
+          onChange={setLine1}
+          onSelect={(result) => {
+            setLine1(result.line1)
+            setCity(result.city)
+            setPostcode(result.postcode)
+            if (result.country) setCountry(result.country)
+          }}
+          placeholder="123 Main Street"
+          className={inputCls}
+        />
       </div>
 
       <div className="space-y-1.5">
@@ -75,17 +97,20 @@ function AddressForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-foreground">City <span className="text-primary text-xs">*</span></label>
-          <input name="city" defaultValue={initial?.city ?? ""} required placeholder="Toronto" className={inputCls} />
+          <input name="city" required value={city} onChange={(e) => setCity(e.target.value)}
+            placeholder="Toronto" className={inputCls} />
         </div>
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-foreground">Postcode <span className="text-primary text-xs">*</span></label>
-          <input name="postcode" defaultValue={initial?.postcode ?? ""} required placeholder="M5V 2T6" className={inputCls} />
+          <input name="postcode" required value={postcode} onChange={(e) => setPostcode(e.target.value)}
+            placeholder="M5V 2T6" className={inputCls} />
         </div>
       </div>
 
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Country <span className="text-primary text-xs">*</span></label>
-        <select name="country" defaultValue={initial?.country ?? "CA"} className={`${inputCls} bg-background`}>
+        <select name="country" value={country} onChange={(e) => setCountry(e.target.value)}
+          className={`${inputCls} bg-background`}>
           {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
         </select>
       </div>

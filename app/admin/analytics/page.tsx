@@ -6,6 +6,11 @@ function fmt(cents: number) {
   return `CA$${(cents / 100).toFixed(2)}`
 }
 
+// Stripe CA pricing: 2.9% + CA$0.30 per transaction
+function calcStripeFee(totalCents: number): number {
+  return Math.round(totalCents * 0.029) + 30
+}
+
 const STATUS_BAR: Record<string, string> = {
   PENDING:    "bg-muted-foreground",
   CONFIRMED:  "bg-blue-500",
@@ -14,6 +19,13 @@ const STATUS_BAR: Record<string, string> = {
   DELIVERED:  "bg-green-600",
   CANCELLED:  "bg-destructive",
   REFUNDED:   "bg-destructive/70",
+}
+
+const revenueWhere = {
+  OR: [
+    { paymentStatus: "PAID"  as const },
+    { status: { in: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"] as ("CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED")[] } },
+  ],
 }
 
 export default async function AdminAnalyticsPage() {
@@ -28,7 +40,7 @@ export default async function AdminAnalyticsPage() {
     totalCustomers,
   ] = await Promise.all([
     prisma.order.findMany({
-      where:   { paymentStatus: "PAID", createdAt: { gte: start } },
+      where:   { ...revenueWhere, createdAt: { gte: start } },
       select:  { total: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
@@ -59,64 +71,104 @@ export default async function AdminAnalyticsPage() {
   })
   const productMap = Object.fromEntries(products.map((p) => [p.id, p.name]))
 
-  // Build 6-month revenue buckets
-  const months: { label: string; revenue: number; orders: number }[] = []
+  // ── Build 6-month buckets ────────────────────────────────────────────────
+  const months: { label: string; gross: number; net: number; fees: number; orders: number }[] = []
   for (let i = 5; i >= 0; i--) {
     const d     = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const label = d.toLocaleDateString("en-CA", { month: "short", year: "2-digit" })
-    months.push({ label, revenue: 0, orders: 0 })
+    months.push({ label, gross: 0, net: 0, fees: 0, orders: 0 })
   }
   for (const o of allOrders) {
     const d   = new Date(o.createdAt)
     const idx = months.findIndex(
       (m) => m.label === d.toLocaleDateString("en-CA", { month: "short", year: "2-digit" })
     )
-    if (idx !== -1) { months[idx].revenue += o.total; months[idx].orders += 1 }
+    if (idx !== -1) {
+      const fee = calcStripeFee(o.total)
+      months[idx].gross  += o.total
+      months[idx].fees   += fee
+      months[idx].net    += o.total - fee
+      months[idx].orders += 1
+    }
   }
 
-  const totalRevenue6m   = months.reduce((s, m) => s + m.revenue, 0)
+  const totalGross6m     = months.reduce((s, m) => s + m.gross, 0)
+  const totalNet6m       = months.reduce((s, m) => s + m.net,   0)
+  const totalFees6m      = months.reduce((s, m) => s + m.fees,  0)
   const totalOrders6m    = months.reduce((s, m) => s + m.orders, 0)
-  const maxRevenue       = Math.max(...months.map((m) => m.revenue), 1)
+  const maxGross         = Math.max(...months.map((m) => m.gross), 1)
   const totalStatusCount = statusBreakdown.reduce((s, r) => s + r._count.id, 0) || 1
 
   const stats = [
-    { label: "Revenue (6 mo.)", value: fmt(totalRevenue6m),              accent: "text-green-600 dark:text-green-400" },
-    { label: "Orders (6 mo.)",  value: totalOrders6m.toString(),         accent: "text-blue-600 dark:text-blue-400" },
-    { label: "Total Customers", value: totalCustomers.toString(),        accent: "text-violet-600 dark:text-violet-400" },
-    { label: "New This Month",  value: newCustomersThisMonth.toString(), accent: "text-primary" },
+    { label: "Gross Revenue (6 mo.)", value: fmt(totalGross6m),               accent: "text-green-600 dark:text-green-400" },
+    { label: "Net Revenue (6 mo.)",   value: fmt(totalNet6m),                 accent: "text-emerald-700 dark:text-emerald-400" },
+    { label: "Stripe Fees (6 mo.)",   value: fmt(totalFees6m),                accent: "text-destructive" },
+    { label: "Orders (6 mo.)",        value: totalOrders6m.toString(),        accent: "text-blue-600 dark:text-blue-400" },
+    { label: "Total Customers",       value: totalCustomers.toString(),       accent: "text-violet-600 dark:text-violet-400" },
+    { label: "New This Month",        value: newCustomersThisMonth.toString(), accent: "text-primary" },
   ]
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">Analytics</h1>
 
-      {/* Top stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Top stats — 2 col mobile, 3 col md+ */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         {stats.map((s) => (
           <div key={s.label} className="bg-card rounded-xl border border-border p-5">
             <p className="text-sm text-muted-foreground mb-1">{s.label}</p>
-            <p className={`text-3xl font-bold ${s.accent}`}>{s.value}</p>
+            <p className={`text-2xl font-bold ${s.accent}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
-        {/* Revenue bar chart */}
+        {/* Revenue bar chart (stacked gross = net + fees) */}
         <div className="bg-card rounded-xl border border-border p-5">
-          <h2 className="font-semibold text-foreground mb-5">Revenue — Last 6 Months</h2>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-semibold text-foreground">Revenue — Last 6 Months</h2>
+          </div>
+          {/* Legend */}
+          <div className="flex items-center gap-4 mb-5">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-block w-3 h-3 rounded-sm bg-primary/80" />
+              Net revenue
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-block w-3 h-3 rounded-sm bg-destructive/40" />
+              Stripe fees
+            </span>
+          </div>
           <div className="flex items-end gap-3 h-40">
-            {months.map((m) => (
-              <div key={m.label} className="flex-1 flex flex-col items-center gap-1.5">
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {m.revenue > 0 ? fmt(m.revenue) : ""}
-                </span>
-                <div
-                  className="w-full rounded-t-md bg-primary/80 transition-all"
-                  style={{ height: `${Math.max((m.revenue / maxRevenue) * 120, m.revenue > 0 ? 4 : 0)}px` }}
-                />
-                <span className="text-[10px] text-muted-foreground">{m.label}</span>
-              </div>
-            ))}
+            {months.map((m) => {
+              const barH = Math.max((m.gross / maxGross) * 120, m.gross > 0 ? 4 : 0)
+              const feeH = m.gross > 0 ? Math.max((m.fees / m.gross) * barH, 1) : 0
+              const netH = barH - feeH
+              return (
+                <div key={m.label} className="flex-1 flex flex-col items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground tabular-nums leading-tight text-center">
+                    {m.gross > 0 ? fmt(m.gross) : ""}
+                  </span>
+                  <div className="w-full flex items-end" style={{ height: "120px" }}>
+                    <div className="w-full flex flex-col" style={{ height: `${barH}px` }}>
+                      {feeH > 0 && (
+                        <div
+                          className="w-full bg-destructive/40 rounded-t-md flex-none"
+                          style={{ height: `${feeH}px` }}
+                        />
+                      )}
+                      {netH > 0 && (
+                        <div
+                          className={`w-full bg-primary/80 flex-none ${feeH <= 0 ? "rounded-t-md" : ""}`}
+                          style={{ height: `${netH}px` }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{m.label}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -150,8 +202,41 @@ export default async function AdminAnalyticsPage() {
         </div>
       </div>
 
+      {/* Revenue breakdown summary */}
+      <div className="bg-card rounded-xl border border-border p-5 mb-6">
+        <h2 className="font-semibold text-foreground mb-4">Revenue Breakdown (6 mo.)</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Gross Revenue</p>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400">{fmt(totalGross6m)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Total charged to customers</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Stripe Fees</p>
+            <p className="text-xl font-bold text-destructive">{fmt(totalFees6m)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              2.9% + CA$0.30 × {totalOrders6m} orders
+              {totalGross6m > 0 && ` (${((totalFees6m / totalGross6m) * 100).toFixed(1)}%)`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Net Revenue</p>
+            <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{fmt(totalNet6m)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">After Stripe processing fees</p>
+          </div>
+        </div>
+        {totalGross6m > 0 && (
+          <div className="mt-4 h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 rounded-full"
+              style={{ width: `${(totalNet6m / totalGross6m) * 100}%` }}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Top products */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="bg-card rounded-xl border border-border overflow-hidden mb-12">
         <div className="px-5 py-4 border-b border-border">
           <h2 className="font-semibold text-foreground">Top Products by Revenue</h2>
         </div>

@@ -121,7 +121,22 @@ export async function createOrderAndPaymentIntent(formData: FormData) {
     }
   }
 
-  const total = Math.max(0, subtotal - discount)
+  // Fees — fetched server-side so they can't be tampered with
+  const settings = await prisma.businessSettings.findFirst({
+    select: { deliveryFee: true, freeDeliveryThreshold: true, taxRate: true },
+  })
+
+  const discountedSubtotal = Math.max(0, subtotal - discount)
+
+  const deliveryFee =
+    data.deliveryMethod === "PICKUP"
+      ? 0
+      : settings?.freeDeliveryThreshold && discountedSubtotal >= settings.freeDeliveryThreshold
+        ? 0
+        : (settings?.deliveryFee ?? 0)
+
+  const taxAmount   = Math.round((discountedSubtotal + deliveryFee) * (settings?.taxRate ?? 0))
+  const total       = discountedSubtotal + deliveryFee + taxAmount
 
   // Create order in DB
   const orderNumber = generateOrderNumber()
@@ -137,6 +152,8 @@ export async function createOrderAndPaymentIntent(formData: FormData) {
       deliveryMethod:   data.deliveryMethod,
       subtotal,
       discount,
+      deliveryFee,
+      taxAmount,
       total,
       promoCode:        appliedPromo,
       notes:            data.notes ?? null,
@@ -152,7 +169,7 @@ export async function createOrderAndPaymentIntent(formData: FormData) {
     select: { id: true, orderNumber: true },
   })
 
-  // Create Stripe PaymentIntent (amount already in smallest unit — pence/cents)
+  // Create Stripe PaymentIntent
   const currency = (process.env.STRIPE_CURRENCY ?? "cad").toLowerCase()
   const paymentIntent = await stripe.paymentIntents.create({
     amount:   Math.round(total),
@@ -172,4 +189,28 @@ export async function createOrderAndPaymentIntent(formData: FormData) {
     orderNumber:  order.orderNumber,
     amount:       total,
   }
+}
+
+// ── Checkout rates (for live sidebar preview) ─────────────────────────────────
+export async function getCheckoutRates() {
+  const s = await prisma.businessSettings.findFirst({
+    select: { deliveryFee: true, freeDeliveryThreshold: true, taxRate: true, taxLabel: true },
+  })
+  return {
+    deliveryFee:           s?.deliveryFee           ?? 0,
+    freeDeliveryThreshold: s?.freeDeliveryThreshold ?? 0,
+    taxRate:               s?.taxRate               ?? 0,
+    taxLabel:              s?.taxLabel              ?? "Tax",
+  }
+}
+
+// ── Saved addresses for logged-in users ───────────────────────────────────────
+export async function getSavedAddresses() {
+  const session = await auth()
+  if (!session?.user?.id) return []
+  return prisma.address.findMany({
+    where:   { userId: session.user.id },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    select:  { id: true, label: true, line1: true, line2: true, city: true, postcode: true, country: true, isDefault: true },
+  })
 }

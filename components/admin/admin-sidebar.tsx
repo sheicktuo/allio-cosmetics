@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -21,6 +22,16 @@ const navLinks = [
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/requests",
+    label: "Requests",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
       </svg>
     ),
   },
@@ -83,15 +94,18 @@ export default function AdminSidebar() {
   return (
     <aside className="w-60 flex-shrink-0 bg-card border-r border-border flex flex-col">
       {/* Logo */}
-      <div className="p-5 border-b border-border">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-primary-foreground font-bold font-heading text-sm">A</span>
-          </div>
-          <div>
-            <p className="font-bold font-heading text-foreground leading-none text-sm">Allio</p>
-            <p className="text-xs text-muted-foreground">Admin Panel</p>
-          </div>
+      <div className="px-4 py-3 border-b border-border">
+        <Link href="/" className="flex items-center justify-between">
+          <Image
+            src="/logo.png"
+            alt="Allio Cosmetics"
+            width={480}
+            height={480}
+            priority
+            quality={100}
+            className="h-10 w-auto"
+          />
+          <span className="text-xs text-muted-foreground font-medium">Admin</span>
         </Link>
       </div>
 

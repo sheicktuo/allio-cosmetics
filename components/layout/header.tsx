@@ -15,6 +15,8 @@ const NAV_LINKS = [
   { href: "/about",            label: "About" },
 ]
 
+const CTA_LINK = { href: "/book", label: "Make a Request" }
+
 function Header() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -49,6 +51,16 @@ function Header() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href={CTA_LINK.href}
+              className={`text-sm font-semibold px-4 py-1.5 rounded-full border transition-colors ${
+                pathname === CTA_LINK.href
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              }`}
+            >
+              {CTA_LINK.label}
+            </Link>
           </div>
 
           {/* Desktop right actions */}
@@ -99,6 +111,16 @@ function Header() {
                 {link.label}
               </Link>
             ))}
+
+            {/* Make a Request CTA */}
+            <Link
+              href={CTA_LINK.href}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-center px-3 py-3 rounded-xl text-sm font-semibold
+                         bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            >
+              {CTA_LINK.label}
+            </Link>
 
             {/* Divider + mobile user actions */}
             <div className="pt-2 border-t border-border mt-2 flex items-center justify-between px-3 py-2">

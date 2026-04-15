@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useCart } from "@/store/cart"
-import { createOrderAndPaymentIntent } from "./actions"
+import { createOrderAndPaymentIntent, getSavedAddresses, getCheckoutRates } from "./actions"
 import PaymentForm from "./payment-form"
 import Header from "@/components/layout/header"
+import AddressAutocomplete from "@/components/ui/address-autocomplete"
 
 function formatPrice(p: number) {
   return `CA$${(p / 100).toFixed(2)}`
@@ -18,6 +19,11 @@ const STEPS = ["Contact", "Order", "Delivery", "Review", "Payment"]
 const inputCls = "w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors text-sm"
 
 type DeliveryMethod = "DELIVERY" | "PICKUP"
+type SavedAddress = {
+  id: string; label: string | null; line1: string; line2: string | null
+  city: string; postcode: string; country: string; isDefault: boolean
+}
+type CheckoutRates = { deliveryFee: number; freeDeliveryThreshold: number; taxRate: number; taxLabel: string }
 
 export default function CheckoutPage() {
   const { items, total, clear } = useCart()
@@ -45,10 +51,8 @@ export default function CheckoutPage() {
     setContactEdits((prev) => ({ ...prev, [field]: value }))
   }
 
-  // Delivery method
+  // Delivery method + address (declared early — needed for fee computation below)
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("DELIVERY")
-
-  // Shipping address
   const [delivery, setDelivery] = useState({
     shippingName:     "",
     shippingLine1:    "",
@@ -59,6 +63,42 @@ export default function CheckoutPage() {
     promoCode:        "",
     notes:            "",
   })
+
+  // Checkout rates (delivery fee, tax)
+  const [rates, setRates] = useState<CheckoutRates>({ deliveryFee: 0, freeDeliveryThreshold: 0, taxRate: 0, taxLabel: "Tax" })
+  useEffect(() => { getCheckoutRates().then(setRates).catch(console.error) }, [])
+
+  // Saved addresses (logged-in users)
+  const [savedAddresses,    setSavedAddresses]    = useState<SavedAddress[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    getSavedAddresses().then(setSavedAddresses).catch(console.error)
+  }, [session?.user?.id])
+
+  // Live fee preview — mirrors server-side logic in actions.ts
+  const effectiveDeliveryFee =
+    deliveryMethod === "PICKUP"
+      ? 0
+      : rates.freeDeliveryThreshold > 0 && subtotal >= rates.freeDeliveryThreshold
+        ? 0
+        : rates.deliveryFee
+  const effectiveTax   = Math.round((subtotal + effectiveDeliveryFee) * rates.taxRate)
+  const estimatedTotal = subtotal + effectiveDeliveryFee + effectiveTax
+
+  function applyAddress(addr: SavedAddress) {
+    setSelectedAddressId(addr.id)
+    setDelivery((d) => ({
+      ...d,
+      shippingName:     contact.name,
+      shippingLine1:    addr.line1,
+      shippingLine2:    addr.line2 ?? "",
+      shippingCity:     addr.city,
+      shippingPostcode: addr.postcode,
+      shippingCountry:  addr.country,
+    }))
+  }
 
   if (items.length === 0) {
     return (
@@ -298,15 +338,81 @@ export default function CheckoutPage() {
                   {/* Delivery: shipping address form */}
                   {deliveryMethod === "DELIVERY" && (
                     <div className="space-y-4 pt-2">
+
+                      {/* Saved addresses — only shown for logged-in users with at least one */}
+                      {savedAddresses.length > 0 && (
+                        <div className="space-y-2.5">
+                          <p className="text-sm font-medium text-foreground">Saved addresses</p>
+                          <div className="grid gap-2">
+                            {savedAddresses.map((addr) => (
+                              <button
+                                key={addr.id}
+                                type="button"
+                                onClick={() => applyAddress(addr)}
+                                className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                                  selectedAddressId === addr.id
+                                    ? "border-primary bg-primary/5"
+                                    : "border-border hover:border-primary/40 hover:bg-muted/50"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    {addr.label && (
+                                      <p className="text-xs font-semibold text-muted-foreground mb-0.5">{addr.label}</p>
+                                    )}
+                                    <p className="text-sm font-medium text-foreground truncate">
+                                      {addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {addr.city}, {addr.postcode} · {addr.country}
+                                    </p>
+                                  </div>
+                                  {selectedAddressId === addr.id && (
+                                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
+                                      <svg className="w-3 h-3 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                  {addr.isDefault && selectedAddressId !== addr.id && (
+                                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full shrink-0">
+                                      Default
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="relative py-1">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full border-t border-border" />
+                            </div>
+                            <div className="relative flex justify-center">
+                              <span className="bg-card px-3 text-xs text-muted-foreground">or enter a different address</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <Field label="Full Name" required>
                         <input value={delivery.shippingName}
                           onChange={(e) => setDelivery({ ...delivery, shippingName: e.target.value })}
                           placeholder="Jane Smith" className={inputCls} />
                       </Field>
                       <Field label="Address line 1" required>
-                        <input value={delivery.shippingLine1}
-                          onChange={(e) => setDelivery({ ...delivery, shippingLine1: e.target.value })}
-                          placeholder="123 Main Street" className={inputCls} />
+                        <AddressAutocomplete
+                          value={delivery.shippingLine1}
+                          onChange={(v) => { setSelectedAddressId(null); setDelivery((d) => ({ ...d, shippingLine1: v })) }}
+                          onSelect={(result) => setDelivery((d) => ({
+                            ...d,
+                            shippingLine1:    result.line1,
+                            shippingCity:     result.city,
+                            shippingPostcode: result.postcode,
+                            shippingCountry:  result.country || d.shippingCountry,
+                          }))}
+                          placeholder="123 Main Street"
+                          className={inputCls}
+                        />
                       </Field>
                       <Field label="Address line 2" hint="Optional">
                         <input value={delivery.shippingLine2}
@@ -413,9 +519,37 @@ export default function CheckoutPage() {
                     {delivery.notes    && <ReviewRow label="Notes"       value={delivery.notes} />}
                   </Section>
 
-                  <div className="flex justify-between text-base font-heading font-bold text-foreground pt-2 border-t border-border">
-                    <span>Total to pay</span>
-                    <span>{formatPrice(subtotal)}</span>
+                  <div className="space-y-2 pt-2 border-t border-border text-sm">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Subtotal</span>
+                      <span>{formatPrice(subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Delivery</span>
+                      <span>
+                        {deliveryMethod === "PICKUP"
+                          ? <span className="text-primary font-medium">Pickup — Free</span>
+                          : effectiveDeliveryFee === 0
+                            ? <span className="text-primary font-medium">Free</span>
+                            : formatPrice(effectiveDeliveryFee)
+                        }
+                      </span>
+                    </div>
+                    {rates.taxRate > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>{rates.taxLabel} ({(rates.taxRate * 100).toFixed(0)}%)</span>
+                        <span>{formatPrice(effectiveTax)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-heading font-bold text-foreground text-base pt-1 border-t border-border">
+                      <span>Estimated Total</span>
+                      <span>{formatPrice(estimatedTotal)}</span>
+                    </div>
+                    {delivery.promoCode && (
+                      <p className="text-xs text-primary">
+                        Promo code <span className="font-semibold">{delivery.promoCode}</span> will be applied automatically.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -492,10 +626,35 @@ export default function CheckoutPage() {
                 </div>
                 <div className="border-t border-border pt-4 space-y-2 text-sm">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal</span><span>{formatPrice(subtotal)}</span>
+                    <span>Subtotal</span>
+                    <span>{formatPrice(subtotal)}</span>
                   </div>
-                  <div className="flex justify-between font-heading font-bold text-foreground text-base pt-1">
-                    <span>Total</span><span>{formatPrice(subtotal)}</span>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Delivery</span>
+                    <span>
+                      {deliveryMethod === "PICKUP"
+                        ? <span className="text-primary font-medium">Pickup — Free</span>
+                        : effectiveDeliveryFee === 0
+                          ? <span className="text-primary font-medium">Free</span>
+                          : formatPrice(effectiveDeliveryFee)
+                      }
+                    </span>
+                  </div>
+                  {rates.taxRate > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>{rates.taxLabel} ({(rates.taxRate * 100).toFixed(0)}%)</span>
+                      <span>{formatPrice(effectiveTax)}</span>
+                    </div>
+                  )}
+                  {delivery.promoCode && (
+                    <div className="flex justify-between text-primary text-xs">
+                      <span>Promo ({delivery.promoCode})</span>
+                      <span>Applied at checkout</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-heading font-bold text-foreground text-base pt-2 border-t border-border">
+                    <span>Estimated Total</span>
+                    <span>{formatPrice(estimatedTotal)}</span>
                   </div>
                 </div>
               </div>

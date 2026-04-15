@@ -1,17 +1,32 @@
 "use client"
 
-import { useActionState, useEffect } from "react"
+import { useActionState, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { saveSettings } from "./actions"
+import AddressAutocomplete from "@/components/ui/address-autocomplete"
 
 type Settings = {
-  businessName: string
-  email:        string | null
-  phone:        string | null
-  address:      string | null
-  city:         string | null
-  country:      string | null
-  currency:     string
+  businessName:          string
+  email:                 string | null
+  phone:                 string | null
+  address:               string | null
+  city:                  string | null
+  postcode:              string | null
+  country:               string | null
+  currency:              string
+  taxLabel:              string
+  deliveryFee:           number
+  freeDeliveryThreshold: number
+  taxRate:               number
+}
+
+// Minimal ISO code → country name map (autocomplete returns ISO codes)
+const ISO_TO_NAME: Record<string, string> = {
+  CA: "Canada", US: "United States", GB: "United Kingdom",
+  AU: "Australia", FR: "France", DE: "Germany", NL: "Netherlands",
+  BE: "Belgium", CH: "Switzerland", ES: "Spain", IT: "Italy",
+  PT: "Portugal", MX: "Mexico", BR: "Brazil", JP: "Japan",
+  CN: "China", IN: "India", AE: "United Arab Emirates",
 }
 
 const inputCls = "w-full px-3 py-2 text-sm border border-border rounded-lg bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -25,6 +40,12 @@ export default function SettingsForm({ settings }: { settings: Settings | null }
     if (state.error)   toast.error(state.error)
     if (state.success) toast.success("Settings saved.")
   }, [state])
+
+  // Controlled state for address fields so autocomplete can fill them
+  const [address,  setAddress]  = useState(settings?.address  ?? "")
+  const [city,     setCity]     = useState(settings?.city     ?? "")
+  const [postcode, setPostcode] = useState(settings?.postcode ?? "")
+  const [country,  setCountry]  = useState(settings?.country  ?? "")
 
   const s = settings
 
@@ -60,19 +81,111 @@ export default function SettingsForm({ settings }: { settings: Settings | null }
 
       {/* Address */}
       <div className="bg-card rounded-xl border border-border p-5">
-        <h2 className="font-semibold text-foreground mb-4">Address</h2>
+        <h2 className="font-semibold text-foreground mb-4">Business Address</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <label className={labelCls}>Street Address</label>
-            <input name="address" defaultValue={s?.address ?? ""} placeholder="123 Queen St W" className={inputCls} />
+            <AddressAutocomplete
+              name="address"
+              value={address}
+              onChange={setAddress}
+              onSelect={(r) => {
+                setAddress(r.line1)
+                setCity(r.city)
+                setPostcode(r.postcode)
+                setCountry(ISO_TO_NAME[r.country] ?? r.country)
+              }}
+              placeholder="123 Queen St W"
+              className={inputCls}
+            />
           </div>
           <div>
             <label className={labelCls}>City</label>
-            <input name="city" defaultValue={s?.city ?? ""} placeholder="Toronto" className={inputCls} />
+            <input
+              name="city"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Toronto"
+              className={inputCls}
+            />
           </div>
           <div>
+            <label className={labelCls}>Postcode / ZIP</label>
+            <input
+              name="postcode"
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
+              placeholder="M5V 2T6"
+              className={inputCls}
+            />
+          </div>
+          <div className="sm:col-span-2">
             <label className={labelCls}>Country</label>
-            <input name="country" defaultValue={s?.country ?? "Canada"} placeholder="Canada" className={inputCls} />
+            <input
+              name="country"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              placeholder="Canada"
+              className={inputCls}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Fees & Taxes */}
+      <div className="bg-card rounded-xl border border-border p-5">
+        <h2 className="font-semibold text-foreground mb-1">Fees &amp; Taxes</h2>
+        <p className="text-xs text-muted-foreground mb-4">Applied automatically at checkout. Leave at 0 to disable.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Delivery Fee ($)</label>
+            <input
+              name="deliveryFee"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={(s?.deliveryFee ?? 0).toFixed(2)}
+              placeholder="0.00"
+              className={inputCls}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">Charged on delivery orders. Set 0 for free delivery.</p>
+          </div>
+          <div>
+            <label className={labelCls}>Free Delivery Threshold ($)</label>
+            <input
+              name="freeDeliveryThreshold"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={(s?.freeDeliveryThreshold ?? 0).toFixed(2)}
+              placeholder="0.00"
+              className={inputCls}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">Orders at or above this amount get free delivery. Set 0 to always charge.</p>
+          </div>
+          <div>
+            <label className={labelCls}>Tax Rate (%)</label>
+            <input
+              name="taxRate"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              defaultValue={(s?.taxRate ?? 0).toFixed(2)}
+              placeholder="0.00"
+              className={inputCls}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">e.g. 13 for 13% HST. Set 0 to disable tax.</p>
+          </div>
+          <div>
+            <label className={labelCls}>Tax Label</label>
+            <input
+              name="taxLabel"
+              defaultValue={s?.taxLabel ?? "Tax"}
+              placeholder="HST, VAT, GST…"
+              className={inputCls}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">Shown next to the tax line at checkout.</p>
           </div>
         </div>
       </div>

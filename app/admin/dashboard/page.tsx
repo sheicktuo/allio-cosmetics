@@ -20,7 +20,13 @@ export default async function AdminDashboard() {
     }),
     prisma.order.aggregate({
       _sum: { total: true },
-      where: { paymentStatus: "PAID" },
+      // Count revenue from confirmed/completed orders regardless of webhook delivery
+      where: {
+        OR: [
+          { paymentStatus: "PAID" },
+          { status: { in: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"] } },
+        ],
+      },
     }),
     prisma.order.findMany({
       take: 10,
