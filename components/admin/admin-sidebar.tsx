@@ -1,12 +1,12 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
+import Link  from "next/link"
 import { usePathname } from "next/navigation"
 
 const navLinks = [
   {
-    href: "/admin/dashboard",
+    href:  "/admin/dashboard",
     label: "Dashboard",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -16,7 +16,7 @@ const navLinks = [
     ),
   },
   {
-    href: "/admin/orders",
+    href:  "/admin/orders",
     label: "Orders",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,7 +26,7 @@ const navLinks = [
     ),
   },
   {
-    href: "/admin/requests",
+    href:  "/admin/requests",
     label: "Requests",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,7 +36,7 @@ const navLinks = [
     ),
   },
   {
-    href: "/admin/shop",
+    href:  "/admin/shop",
     label: "Shop",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,7 +46,7 @@ const navLinks = [
     ),
   },
   {
-    href: "/admin/customers",
+    href:  "/admin/customers",
     label: "Customers",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,17 @@ const navLinks = [
     ),
   },
   {
-    href: "/admin/promo-codes",
+    href:  "/admin/team",
+    label: "Team",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+  },
+  {
+    href:  "/admin/promo-codes",
     label: "Promo Codes",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +76,7 @@ const navLinks = [
     ),
   },
   {
-    href: "/admin/analytics",
+    href:  "/admin/analytics",
     label: "Analytics",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +86,7 @@ const navLinks = [
     ),
   },
   {
-    href: "/admin/settings",
+    href:  "/admin/settings",
     label: "Settings",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,21 +103,30 @@ const BADGES: Record<string, (counts: { newOrders: number; newRequests: number }
   "/admin/requests": (c) => c.newRequests,
 }
 
-export default function AdminSidebar({
-  newOrders,
-  newRequests,
-}: {
+type Props = {
   newOrders:   number
   newRequests: number
-}) {
+  isOpen:      boolean
+  onClose:     () => void
+}
+
+export default function AdminSidebar({ newOrders, newRequests, isOpen, onClose }: Props) {
   const pathname = usePathname()
   const counts   = { newOrders, newRequests }
 
   return (
-    <aside className="w-60 flex-shrink-0 bg-card border-r border-border flex flex-col">
-      {/* Logo */}
-      <div className="px-4 py-3 border-b border-border">
-        <Link href="/" className="flex items-center justify-between">
+    <aside
+      className={`
+        fixed inset-y-0 left-0 z-50 flex flex-col w-64
+        bg-card border-r border-border
+        transition-transform duration-200 ease-in-out
+        lg:relative lg:translate-x-0 lg:z-auto lg:w-60 lg:flex-shrink-0
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
+      `}
+    >
+      {/* Logo row */}
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2" onClick={onClose}>
           <Image
             src="/logo.png"
             alt="Allio Cosmetics"
@@ -119,6 +138,17 @@ export default function AdminSidebar({
           />
           <span className="text-xs text-muted-foreground font-medium">Admin</span>
         </Link>
+
+        {/* Close button — mobile only */}
+        <button
+          className="lg:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          onClick={onClose}
+          aria-label="Close menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Nav */}
@@ -131,6 +161,7 @@ export default function AdminSidebar({
               key={link.href}
               href={link.href}
               prefetch={false}
+              onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 active
                   ? "bg-primary text-primary-foreground"
@@ -157,6 +188,7 @@ export default function AdminSidebar({
       <div className="p-3 border-t border-border">
         <Link
           href="/"
+          onClick={onClose}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
