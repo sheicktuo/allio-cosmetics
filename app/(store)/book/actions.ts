@@ -21,6 +21,19 @@ export type RequestData = {
   items:  RequestItem[]
 }
 
+// ─── Rate limit ──────────────────────────────────────────────────────────────
+
+const RATE_LIMIT_MAX    = 3    // max submissions
+const RATE_LIMIT_WINDOW = 3600 // per hour (seconds)
+
+async function checkRateLimit(email: string): Promise<boolean> {
+  const since = new Date(Date.now() - RATE_LIMIT_WINDOW * 1000)
+  const count = await prisma.customRequest.count({
+    where: { email: email.toLowerCase(), createdAt: { gte: since } },
+  })
+  return count < RATE_LIMIT_MAX
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Escape user-supplied strings before embedding them in email HTML. */
@@ -54,6 +67,11 @@ export async function submitRequest(
   try {
     if (!data.name.trim() || !data.email.trim()) {
       return { success: false, error: "Please fill in your name and email." }
+    }
+
+    const allowed = await checkRateLimit(data.email)
+    if (!allowed) {
+      return { success: false, error: "Too many requests. Please try again later." }
     }
 
     const items = data.items

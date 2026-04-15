@@ -88,8 +88,20 @@ const navLinks = [
   },
 ]
 
-export default function AdminSidebar() {
+const BADGES: Record<string, (counts: { newOrders: number; newRequests: number }) => number> = {
+  "/admin/orders":   (c) => c.newOrders,
+  "/admin/requests": (c) => c.newRequests,
+}
+
+export default function AdminSidebar({
+  newOrders,
+  newRequests,
+}: {
+  newOrders:   number
+  newRequests: number
+}) {
   const pathname = usePathname()
+  const counts   = { newOrders, newRequests }
 
   return (
     <aside className="w-60 flex-shrink-0 bg-card border-r border-border flex flex-col">
@@ -113,6 +125,7 @@ export default function AdminSidebar() {
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navLinks.map((link) => {
           const active = pathname === link.href || pathname.startsWith(link.href + "/")
+          const badge  = BADGES[link.href]?.(counts) ?? 0
           return (
             <Link
               key={link.href}
@@ -125,7 +138,16 @@ export default function AdminSidebar() {
               }`}
             >
               {link.icon}
-              {link.label}
+              <span className="flex-1">{link.label}</span>
+              {badge > 0 && (
+                <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none ${
+                  active
+                    ? "bg-primary-foreground/20 text-primary-foreground"
+                    : "bg-primary/15 text-primary"
+                }`}>
+                  {badge}
+                </span>
+              )}
             </Link>
           )
         })}

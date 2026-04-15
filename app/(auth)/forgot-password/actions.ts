@@ -35,10 +35,12 @@ export async function forgotPasswordAction(
       data: { userId: user.id, token, expires },
     })
 
-    const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
+    const resetUrl     = `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password?token=${token}`
+    const settings     = await prisma.businessSettings.findFirst({ select: { businessName: true } })
+    const businessName = settings?.businessName ?? "Allio Cosmetics"
 
     await resend.emails.send({
-      from:    "Allio Cosmetics <noreply@alliocosmetics.com>",
+      from:    `${businessName} <noreply@alliocosmetics.com>`,
       to:      email,
       subject: "Reset your Allio password",
       html: `
